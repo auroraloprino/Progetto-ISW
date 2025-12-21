@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chronio</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav>
+    <div class="logo">CHRONIO</div>
+    <div class="nav-links">
+      <a href="#" class="active"><i class="fas fa-calendar-alt"></i> Calendario</a>
+      <a href="#"><i class="fas fa-clipboard"></i> Bacheche</a>
+      <a href="#"><i class="fas fa-wallet"></i> Budget</a>
+      <a href="#"><i class="fas fa-user-circle"></i> Account</a>
+    </div>
+  </nav>
+  
+  <div class="container">
+    <div class="sidebar-left">
+      <div class="add-calendar">
+        <button id="addCalendarBtn"><i class="fas fa-plus"></i> Aggiungi calendario</button>
+      </div>
+      <div class="calendar-list" id="calendarList"></div>
+    </div>
+    
+    <div class="main-content">
+      <div class="calendar-header">
+        <div class="month-nav">
+          <button id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+          <h2 id="monthYear"></h2>
+          <button id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <select id="viewSelector" class="view-selector">
+          <option value="month" selected>Mese</option>
+          <option value="week">Settimana</option>
+          <option value="day">Giorno</option>
+        </select>
+      </div>
+      
+      <div class="calendar" id="monthCalendar">
+        <div class="weekdays">
+          <span>Lun</span>
+          <span>Mar</span>
+          <span>Mer</span>
+          <span>Gio</span>
+          <span>Ven</span>
+          <span>Sab</span>
+          <span>Dom</span>
+        </div>
+        <div class="days" id="calendarDays"></div>
+      </div>
+      
+      <div class="week-view-inline" id="weekViewInline" style="display: none;">
+        <div class="week-header">
+          <button id="prevWeekInline"><i class="fas fa-chevron-left"></i></button>
+          <h3 id="weekViewTitleInline">Settimana</h3>
+          <button id="nextWeekInline"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="week-grid-inline" id="weekGridInline"></div>
+      </div>
+      
+      <div class="day-view-inline" id="dayViewInline" style="display: none;">
+        <div class="day-header">
+          <button id="prevDayInline"><i class="fas fa-chevron-left"></i></button>
+          <h3 id="dayViewTitleInline">Giorno</h3>
+          <button id="nextDayInline"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="day-timeline" id="dayTimelineInline"></div>
+      </div>
+    </div>
+    
+    <div class="sidebar-right">
+      <div class="spacer"></div>
+      <div class="today-card">
+        <div class="card-inner">
+          <h3>Oggi</h3>
+          <div id="todayEvents"></div>
+        </div>
+      </div>
+      
+      <div class="week-card">
+        <div class="card-inner">
+          <h3>Questa settimana</h3>
+          <div id="weekEvents"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="weekViewModal" class="modal">
+    <div class="modal-content week-view">
+      <div class="modal-inner">
+        <span class="close" id="closeWeekView">&times;</span>
+        <div class="week-header">
+          <button id="prevWeek"><i class="fas fa-chevron-left"></i></button>
+          <h3 id="weekViewTitle">Settimana</h3>
+          <button id="nextWeek"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="week-grid" id="weekGrid"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="dayViewModal" class="modal">
+    <div class="modal-content day-view">
+      <div class="modal-inner">
+        <span class="close" id="closeDayView">&times;</span>
+        <h3 id="dayViewTitle">Eventi del giorno</h3>
+        <div class="time-slots" id="timeSlots"></div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="eventModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-inner">
+        <span class="close" id="closeEventModal">&times;</span>
+        <h3 id="eventModalTitle">Aggiungi evento</h3>
+        <div class="form-group">
+          <label>Titolo</label>
+          <input type="text" id="eventTitle" placeholder="Inserisci titolo">
+        </div>
+        <div class="form-group">
+          <label>Data e Ora Inizio</label>
+          <input type="datetime-local" id="eventDateTime">
+        </div>
+        <div class="form-group">
+          <label>Data e Ora Fine</label>
+          <input type="datetime-local" id="eventEndDateTime">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <div class="checkbox-group">
+            <label class="radio-label"><input type="radio" name="eventType" value="evento" checked> Evento</label>
+            <label class="radio-label"><input type="radio" name="eventType" value="attivita"> Attività</label>
+            <label class="radio-label"><input type="radio" name="eventType" value="appuntamento"> Appuntamento</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descrizione</label>
+          <textarea id="eventDescription" placeholder="Descrizione"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tag</label>
+          <select id="eventTag">
+            <option value="">Seleziona tag</option>
+          </select>
+        </div>
+        <div class="modal-buttons">
+          <button id="saveEvent">Salva</button>
+          <button id="deleteEvent" style="display:none;">Elimina</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="calendarModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-inner">
+        <span class="close">&times;</span>
+        <h3>Aggiungi calendario</h3>
+        <input type="text" id="calendarName" placeholder="Nome calendario">
+        <div class="color-picker">
+          <div class="color-option" data-color="#0d4853"></div>
+          <div class="color-option" data-color="#e74c3c"></div>
+          <div class="color-option" data-color="#3498db"></div>
+          <div class="color-option" data-color="#2ecc71"></div>
+          <div class="color-option" data-color="#f39c12"></div>
+          <div class="color-option" data-color="#9b59b6"></div>
+        </div>
+        <button id="saveCalendar">Salva</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="script.js"></script>
+</body>
+</html>
