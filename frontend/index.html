@@ -20,10 +20,14 @@
   
   <div class="container">
     <div class="sidebar-left">
-      <div class="add-calendar">
-        <button id="addCalendarBtn"><i class="fas fa-plus"></i> Aggiungi calendario</button>
+      <div class="tags-section">
+        <div class="tags-header">
+          <button id="toggleTags" class="burger-menu"><i class="fas fa-bars"></i></button>
+          <span>Tags</span>
+          <button id="addTagBtn" class="add-tag-btn"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="tags-list" id="tagsList"></div>
       </div>
-      <div class="calendar-list" id="calendarList"></div>
     </div>
     
     <div class="main-content">
@@ -157,21 +161,30 @@
     </div>
   </div>
   
-  <div id="calendarModal" class="modal">
+  <div id="tagModal" class="modal">
     <div class="modal-content">
       <div class="modal-inner">
-        <span class="close">&times;</span>
-        <h3>Aggiungi calendario</h3>
-        <input type="text" id="calendarName" placeholder="Nome calendario">
-        <div class="color-picker">
-          <div class="color-option" data-color="#0d4853"></div>
-          <div class="color-option" data-color="#e74c3c"></div>
-          <div class="color-option" data-color="#3498db"></div>
-          <div class="color-option" data-color="#2ecc71"></div>
-          <div class="color-option" data-color="#f39c12"></div>
-          <div class="color-option" data-color="#9b59b6"></div>
+        <span class="close" id="closeTagModal">&times;</span>
+        <h3 id="tagModalTitle">Aggiungi Tag</h3>
+        <input type="text" id="tagName" placeholder="Nome tag">
+        <div class="custom-color-picker">
+          <div class="color-grid" id="tagColorGrid">
+            <div class="color-option" data-color="#0d4853"></div>
+            <div class="color-option" data-color="#e74c3c"></div>
+            <div class="color-option" data-color="#3498db"></div>
+            <div class="color-option" data-color="#2ecc71"></div>
+            <div class="color-option" data-color="#f39c12"></div>
+            <div class="color-option" data-color="#9b59b6"></div>
+            <div class="color-option" data-color="#e91e63"></div>
+            <div class="color-option" data-color="#ff5722"></div>
+            <div class="color-option" data-color="#795548"></div>
+            <div class="color-option" data-color="#607d8b"></div>
+            <div class="color-option" data-color="#ffc107"></div>
+            <div class="color-option" data-color="#4caf50"></div>
+          </div>
+          <input type="color" id="customColorPicker" value="#0d4853">
         </div>
-        <button id="saveCalendar">Salva</button>
+        <button id="saveTag">Salva</button>
       </div>
     </div>
   </div>

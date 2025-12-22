@@ -5,7 +5,10 @@ let currentDate = new Date();
 let displayMonth = currentDate.getMonth();
 let displayYear = currentDate.getFullYear();
 let calendars = [];
+let tags = [];
 let selectedColor = '#0d4853';
+let tagsVisible = true;
+let tagIdCounter = 1;
 let selectedDate = null;
 let editingEventId = null;
 let currentView = 'month';
@@ -111,6 +114,7 @@ function renderWeekViewInline() {
           if (eventHour === hour) {
             const eventEl = document.createElement('div');
             eventEl.className = 'week-event-inline';
+            eventEl.style.backgroundColor = getEventColor(event.tag);
             
             let displayTime;
             if (dateKey === endDateKey && startDateKey !== endDateKey) {
@@ -276,9 +280,10 @@ function renderCalendar() {
   renderWeekEvents();
 }
 
-function getEventColor(tag) {
-  const calendar = calendars.find(cal => cal.name === tag);
-  return calendar ? calendar.color : '#0d4853';
+function getEventColor(tagId) {
+  if (!tagId) return '#0d4853';
+  const tag = tags.find(t => t.id == tagId);
+  return tag && tag.visible ? tag.color : '#0d4853';
 }
 
 function getEventDisplayTitle(event, currentDateKey) {
@@ -439,7 +444,7 @@ function renderTodayEvents() {
         const eventTime = new Date(event.datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
         return `
           <div class="event" onclick="editEvent('${dateKey}', ${event.id})">
-            <div class="event-color"></div>
+            <div class="event-color" style="background: ${getEventColor(event.tag)}"></div>
             <div class="event-info">
               <h4>${event.title}</h4>
               <span>${eventTime} - ${event.type}</span>
@@ -482,7 +487,8 @@ function renderWeekEvents() {
             type: event.type,
             date: eventDate.getDate(),
             month: months[eventDate.getMonth()].slice(0, 3),
-            dateKey: dateKey
+            dateKey: dateKey,
+            tag: event.tag
           });
         }
       });
@@ -492,7 +498,7 @@ function renderWeekEvents() {
   if (weekEventsList.length > 0) {
     weekEvents.innerHTML = weekEventsList.map(item => `
       <div class="event" onclick="editEvent('${item.dateKey}', ${item.id})">
-        <div class="event-color"></div>
+        <div class="event-color" style="background: ${getEventColor(item.tag)}"></div>
         <div class="event-info">
           <h4>${item.title}</h4>
           <span>${item.date} ${item.month} - ${item.time} - ${item.type}</span>
@@ -578,17 +584,32 @@ document.addEventListener('DOMContentLoaded', function() {
   
   document.getElementById('monthYear').addEventListener('click', () => switchView('month'));
   
-  const modal = document.getElementById('calendarModal');
-  const addBtn = document.getElementById('addCalendarBtn');
-  const closeBtn = document.querySelector('.close');
-
-  addBtn.addEventListener('click', () => {
-    modal.style.display = 'block';
+  document.getElementById('toggleTags').addEventListener('click', () => {
+    tagsVisible = !tagsVisible;
+    renderTagsList();
   });
+  
+  const modal = document.getElementById('tagModal');
+  const addBtn = document.getElementById('addTagBtn');
+  const closeBtn = document.getElementById('closeTagModal');
 
-  closeBtn.addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      editingTagId = null;
+      document.getElementById('tagModalTitle').textContent = 'Aggiungi Tag';
+      document.getElementById('tagName').value = '';
+      selectedColor = '#0d4853';
+      document.getElementById('customColorPicker').value = '#0d4853';
+      document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
+      modal.style.display = 'block';
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+  }
 
   window.addEventListener('click', (e) => {
     if (e.target === modal) {
@@ -596,23 +617,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  document.querySelectorAll('.color-option').forEach(option => {
+  document.querySelectorAll('#tagColorGrid .color-option').forEach(option => {
     option.addEventListener('click', () => {
-      document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+      document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
       option.classList.add('selected');
       selectedColor = option.dataset.color;
+      document.getElementById('customColorPicker').value = selectedColor;
     });
   });
 
-  document.getElementById('saveCalendar').addEventListener('click', () => {
-    const name = document.getElementById('calendarName').value.trim();
+  document.getElementById('customColorPicker').addEventListener('change', (e) => {
+    selectedColor = e.target.value;
+    document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
+  });
+
+  document.getElementById('customColorPicker').addEventListener('input', (e) => {
+    selectedColor = e.target.value;
+    document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
+  });
+
+  document.getElementById('saveTag').addEventListener('click', () => {
+    const name = document.getElementById('tagName').value.trim();
     if (name) {
-      calendars.push({ name, color: selectedColor });
-      renderCalendarList();
+      if (editingTagId) {
+        const tag = tags.find(t => t.id == editingTagId);
+        if (tag) {
+          tag.name = name;
+          tag.color = selectedColor;
+        }
+        editingTagId = null;
+      } else {
+        tags.push({ 
+          id: tagIdCounter++, 
+          name, 
+          color: selectedColor, 
+          visible: true 
+        });
+      }
+      renderTagsList();
       modal.style.display = 'none';
-      document.getElementById('calendarName').value = '';
-      document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+      document.getElementById('tagName').value = '';
+      document.getElementById('tagModalTitle').textContent = 'Aggiungi Tag';
+      document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
       selectedColor = '#0d4853';
+      document.getElementById('customColorPicker').value = '#0d4853';
+      if (currentView === 'month') renderCalendar();
+      else if (currentView === 'week') renderWeekViewInline();
+      else if (currentView === 'day') renderDayViewInline();
     }
   });
 
@@ -656,5 +707,73 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  renderCalendarList();
+  renderTagsList();
 });
+function renderTagsList() {
+  const tagsList = document.getElementById('tagsList');
+  const eventTag = document.getElementById('eventTag');
+  
+  if (!tagsVisible) {
+    tagsList.style.display = 'none';
+    return;
+  }
+  
+  tagsList.style.display = 'flex';
+  tagsList.innerHTML = tags.map(tag => `
+    <div class="tag-item" ondblclick="editTag('${tag.id}')">
+      <div class="tag-checkbox ${tag.visible ? 'checked' : ''}" onclick="toggleTag('${tag.id}')">
+        ${tag.visible ? '<i class="fas fa-check"></i>' : ''}
+      </div>
+      <div class="tag-color" style="background: ${tag.color}"></div>
+      <span class="tag-name">${tag.name}</span>
+      <button class="delete-tag-btn" onclick="deleteTag('${tag.id}')">
+        <i class="fas fa-trash"></i>
+      </button>
+    </div>
+  `).join('');
+  
+  if (eventTag) {
+    eventTag.innerHTML = '<option value="">Seleziona tag</option>' + 
+      tags.map(tag => `<option value="${tag.id}" data-color="${tag.color}">${tag.name}</option>`).join('');
+  }
+}
+
+function toggleTag(tagId) {
+  const tag = tags.find(t => t.id == tagId);
+  if (tag) {
+    tag.visible = !tag.visible;
+    renderTagsList();
+    if (currentView === 'month') renderCalendar();
+    else if (currentView === 'week') renderWeekViewInline();
+    else if (currentView === 'day') renderDayViewInline();
+  }
+}
+function deleteTag(tagId) {
+  if (confirm('Sei sicuro di voler eliminare questo tag?')) {
+    tags = tags.filter(t => t.id != tagId);
+    renderTagsList();
+    if (currentView === 'month') renderCalendar();
+    else if (currentView === 'week') renderWeekViewInline();
+    else if (currentView === 'day') renderDayViewInline();
+  }
+}
+let editingTagId = null;
+
+function editTag(tagId) {
+  const tag = tags.find(t => t.id == tagId);
+  if (!tag) return;
+  
+  editingTagId = tagId;
+  document.getElementById('tagModalTitle').textContent = 'Modifica Tag';
+  document.getElementById('tagName').value = tag.name;
+  selectedColor = tag.color;
+  document.getElementById('customColorPicker').value = tag.color;
+  
+  document.querySelectorAll('#tagColorGrid .color-option').forEach(o => o.classList.remove('selected'));
+  const matchingOption = document.querySelector(`#tagColorGrid .color-option[data-color="${tag.color}"]`);
+  if (matchingOption) {
+    matchingOption.classList.add('selected');
+  }
+  
+  document.getElementById('tagModal').style.display = 'block';
+}
