@@ -353,7 +353,6 @@ function editEvent(dateKey, eventId) {
 }
 
 function saveEvent() {
-  console.log('saveEvent chiamata');
   const title = document.getElementById('eventTitle').value.trim();
   const datetime = document.getElementById('eventDateTime').value;
   const endDatetime = document.getElementById('eventEndDateTime').value || null;
@@ -361,10 +360,7 @@ function saveEvent() {
   const description = document.getElementById('eventDescription').value.trim();
   const tag = document.getElementById('eventTag').value;
   
-  console.log('Dati evento:', { title, datetime, endDatetime, type, description, tag });
-  
   if (!datetime) {
-    console.log('Data mancante');
     return;
   }
   
@@ -381,8 +377,6 @@ function saveEvent() {
     tag
   };
   
-  console.log('Nuovo evento:', newEvent);
-  
   if (editingEventId) {
     for (const dateKey in events) {
       events[dateKey] = events[dateKey].filter(e => e.id !== editingEventId);
@@ -393,7 +387,6 @@ function saveEvent() {
   const currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`;
-    console.log('Aggiungendo a dateKey:', dateKey);
     
     if (!events[dateKey]) {
       events[dateKey] = [];
@@ -402,8 +395,6 @@ function saveEvent() {
     events[dateKey].push(newEvent);
     currentDate.setDate(currentDate.getDate() + 1);
   }
-  
-  console.log('Eventi aggiornati:', events);
   
   document.getElementById('eventModal').style.display = 'none';
   if (currentView === 'month') renderCalendar();
@@ -431,33 +422,49 @@ function deleteEvent(e, dateKey, eventId) {
 function renderTodayEvents() {
   const todayEvents = document.getElementById('todayEvents');
   const today = new Date();
-  const dateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const todayDateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
   
-  if (events[dateKey]) {
-    const todayEventsList = events[dateKey].filter(event => {
+  const todayEventsList = [];
+  
+  if (events[todayDateKey]) {
+    events[todayDateKey].forEach(event => {
       const eventDate = new Date(event.datetime);
-      return eventDate.toDateString() === today.toDateString();
+      if (eventDate.toDateString() === today.toDateString()) {
+        todayEventsList.push(event);
+      }
     });
-    
-    if (todayEventsList.length > 0) {
-      todayEvents.innerHTML = todayEventsList.map(event => {
-        const eventTime = new Date(event.datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-        return `
-          <div class="event" onclick="editEvent('${dateKey}', ${event.id})">
-            <div class="event-color" style="background: ${getEventColor(event.tag)}"></div>
-            <div class="event-info">
-              <h4>${event.title}</h4>
-              <span>${eventTime} - ${event.type}</span>
-            </div>
-            <button class="delete-event" onclick="deleteEvent(event, '${dateKey}', ${event.id})">
-              <i class="fas fa-trash"></i>
-            </button>
+  }
+  
+  for (const dateKey in events) {
+    events[dateKey].forEach(event => {
+      if (event.endDatetime) {
+        const eventEndDate = new Date(event.endDatetime);
+        if (eventEndDate.toDateString() === today.toDateString() && dateKey !== todayDateKey) {
+          const modifiedEvent = { ...event, title: `Fine (${event.title})`, datetime: event.endDatetime };
+          todayEventsList.push(modifiedEvent);
+        }
+      }
+    });
+  }
+  
+  if (todayEventsList.length > 0) {
+    todayEvents.innerHTML = todayEventsList.map(event => {
+      const eventTime = new Date(event.datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      const tag = tags.find(t => t.id == event.tag);
+      const tagName = tag ? tag.name : '';
+      return `
+        <div class="event" onclick="editEvent('${todayDateKey}', ${event.id})">
+          <div class="event-color" style="background: ${getEventColor(event.tag)}"></div>
+          <div class="event-info">
+            <h4>${event.title}</h4>
+            <span>${eventTime} - ${event.type}${tagName ? ' - ' + tagName : ''}</span>
           </div>
-        `;
-      }).join('');
-    } else {
-      todayEvents.innerHTML = '<div class="no-events">Nessun evento oggi</div>';
-    }
+          <button class="delete-event" onclick="deleteEvent(event, '${todayDateKey}', ${event.id})">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `;
+    }).join('');
   } else {
     todayEvents.innerHTML = '<div class="no-events">Nessun evento oggi</div>';
   }
@@ -466,30 +473,97 @@ function renderTodayEvents() {
 function renderWeekEvents() {
   const weekEvents = document.getElementById('weekEvents');
   const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay() + 1);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() + 6);
   
   const weekEventsList = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(weekStart);
-    date.setDate(weekStart.getDate() + i);
+  for (let i = 1; i <= 6; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
     const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
     
     if (events[dateKey]) {
       events[dateKey].forEach(event => {
         const eventDate = new Date(event.datetime);
-        if (eventDate >= weekStart && eventDate <= new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000)) {
+        const eventEndDate = event.endDatetime ? new Date(event.endDatetime) : eventDate;
+        
+        if ((eventDate >= tomorrow && eventDate <= weekEnd) ||
+            (eventEndDate >= tomorrow && eventEndDate <= weekEnd) ||
+            (eventDate < tomorrow && eventEndDate > weekEnd)) {
+          
           const eventTime = eventDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+          const currentEventDate = new Date(dateKey.split('-').map((part, index) => index === 1 ? parseInt(part) - 1 : parseInt(part)));
+          
+          let eventTitle = event.title;
+          if (event.endDatetime) {
+            const startDateKey = `${eventDate.getFullYear()}-${eventDate.getMonth() + 1}-${eventDate.getDate()}`;
+            const endDateKey = `${eventEndDate.getFullYear()}-${eventEndDate.getMonth() + 1}-${eventEndDate.getDate()}`;
+            
+            if (startDateKey !== endDateKey) {
+              if (dateKey === startDateKey) {
+                eventTitle = `Inizio (${event.title})`;
+              } else if (dateKey === endDateKey) {
+                eventTitle = `Fine (${event.title})`;
+              }
+            }
+          }
+          
+          const tag = tags.find(t => t.id == event.tag);
+          const tagName = tag ? tag.name : '';
+          
           weekEventsList.push({
             id: event.id,
-            title: event.title,
+            title: eventTitle,
             time: eventTime,
             type: event.type,
-            date: eventDate.getDate(),
-            month: months[eventDate.getMonth()].slice(0, 3),
+            date: currentEventDate.getDate(),
+            month: months[currentEventDate.getMonth()].slice(0, 3),
             dateKey: dateKey,
-            tag: event.tag
+            tag: event.tag,
+            tagName: tagName
           });
+        }
+      });
+    }
+  }
+  
+  for (let i = 1; i <= 6; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    
+    for (const eventDateKey in events) {
+      events[eventDateKey].forEach(event => {
+        if (event.endDatetime) {
+          const eventEndDate = new Date(event.endDatetime);
+          const endDateKey = `${eventEndDate.getFullYear()}-${eventEndDate.getMonth() + 1}-${eventEndDate.getDate()}`;
+          
+          if (endDateKey === dateKey && eventDateKey !== endDateKey) {
+            const eventTime = eventEndDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            const tag = tags.find(t => t.id == event.tag);
+            const tagName = tag ? tag.name : '';
+            
+            const alreadyAdded = weekEventsList.some(item => 
+              item.id === event.id && item.title.startsWith('Fine (')
+            );
+            
+            if (!alreadyAdded) {
+              weekEventsList.push({
+                id: event.id,
+                title: `Fine (${event.title})`,
+                time: eventTime,
+                type: event.type,
+                date: eventEndDate.getDate(),
+                month: months[eventEndDate.getMonth()].slice(0, 3),
+                dateKey: endDateKey,
+                tag: event.tag,
+                tagName: tagName
+              });
+            }
+          }
         }
       });
     }
@@ -501,7 +575,7 @@ function renderWeekEvents() {
         <div class="event-color" style="background: ${getEventColor(item.tag)}"></div>
         <div class="event-info">
           <h4>${item.title}</h4>
-          <span>${item.date} ${item.month} - ${item.time} - ${item.type}</span>
+          <span>${item.date} ${item.month} - ${item.time} - ${item.type}${item.tagName ? ' - ' + item.tagName : ''}</span>
         </div>
         <button class="delete-event" onclick="deleteEvent(event, '${item.dateKey}', ${item.id})">
           <i class="fas fa-trash"></i>
@@ -509,7 +583,7 @@ function renderWeekEvents() {
       </div>
     `).join('');
   } else {
-    weekEvents.innerHTML = '<div class="no-events">Nessun evento questa settimana</div>';
+    weekEvents.innerHTML = '<div class="no-events">Nessun evento nei prossimi giorni</div>';
   }
 }
 
