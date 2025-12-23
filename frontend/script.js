@@ -66,6 +66,12 @@ function renderWeekViewInline() {
   timeHeader.className = 'week-time-header-inline';
   timeColumn.appendChild(timeHeader);
   
+  const allDaySlot = document.createElement('div');
+  allDaySlot.className = 'week-time-slot-inline';
+  allDaySlot.textContent = 'Tutto il giorno';
+  allDaySlot.style.fontSize = '0.7rem';
+  timeColumn.appendChild(allDaySlot);
+  
   for (let hour = 0; hour < 24; hour++) {
     const timeSlot = document.createElement('div');
     timeSlot.className = 'week-time-slot-inline';
@@ -87,15 +93,35 @@ function renderWeekViewInline() {
     dayHeader.textContent = `${['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'][day]} ${currentDay.getDate()}`;
     dayColumn.appendChild(dayHeader);
     
+    const dateKey = `${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`;
+    
+    const allDaySlot = document.createElement('div');
+    allDaySlot.className = 'week-hour-slot-inline';
+    
+    if (events[dateKey]) {
+      events[dateKey].forEach(event => {
+        const tag = tags.find(t => t.id == event.tag);
+        if ((!event.tag || (tag && tag.visible)) && event.allDay) {
+          const eventEl = document.createElement('div');
+          eventEl.className = 'week-event-inline';
+          eventEl.style.backgroundColor = getEventColor(event.tag);
+          eventEl.innerHTML = `<strong>${getEventDisplayTitle(event, dateKey)}</strong>`;
+          eventEl.onclick = () => editEvent(dateKey, event.id);
+          allDaySlot.appendChild(eventEl);
+        }
+      });
+    }
+    
+    dayColumn.appendChild(allDaySlot);
+    
     for (let hour = 0; hour < 24; hour++) {
       const hourSlot = document.createElement('div');
       hourSlot.className = 'week-hour-slot-inline';
       
-      const dateKey = `${currentDay.getFullYear()}-${currentDay.getMonth() + 1}-${currentDay.getDate()}`;
       if (events[dateKey]) {
         events[dateKey].forEach(event => {
           const tag = tags.find(t => t.id == event.tag);
-          if (!event.tag || tag) {
+          if ((!event.tag || (tag && tag.visible)) && !event.allDay) {
             const startDate = new Date(event.datetime);
             const endDate = event.endDatetime ? new Date(event.endDatetime) : startDate;
             const startDateKey = `${startDate.getFullYear()}-${startDate.getMonth() + 1}-${startDate.getDate()}`;
@@ -144,12 +170,37 @@ function renderDayViewInline() {
   const dateKey = `${currentDayView.getFullYear()}-${currentDayView.getMonth() + 1}-${currentDayView.getDate()}`;
   const dayEvents = events[dateKey] || [];
   
+  const allDayEvents = dayEvents.filter(event => {
+    const tag = tags.find(t => t.id == event.tag);
+    return (!event.tag || (tag && tag.visible)) && event.allDay;
+  });
+  
   let timelineHTML = '';
+  
+  if (allDayEvents.length > 0) {
+    timelineHTML += `
+      <div class="all-day-section">
+        <div class="all-day-label">Tutto il giorno</div>
+        <div class="all-day-events">
+          ${allDayEvents.map(event => `
+            <div class="all-day-event" 
+                 style="background: ${getEventColor(event.tag)}" 
+                 onclick="editEvent('${dateKey}', ${event.id})">
+              <strong>${getEventDisplayTitle(event, dateKey)}</strong>
+              <span>${event.type}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
   for (let hour = 0; hour < 24; hour++) {
     const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
     const eventsInHour = dayEvents.filter(event => {
       const tag = tags.find(t => t.id == event.tag);
-      if (event.tag && !tag) return false;
+      if (event.tag && (!tag || !tag.visible)) return false;
+      if (event.allDay) return false;
       
       const eventStart = new Date(event.datetime);
       const eventEnd = event.endDatetime ? new Date(event.endDatetime) : eventStart;
@@ -241,7 +292,7 @@ function renderCalendar() {
     if (events[dateKey]) {
       const validEvents = events[dateKey].filter(event => {
         const tag = tags.find(t => t.id == event.tag);
-        return !event.tag || tag;
+        return !event.tag || (tag && tag.visible);
       });
       
       if (validEvents.length > 0) {
@@ -317,17 +368,28 @@ function openEventModal(day, month, year, hour = 9) {
   const eventDescription = document.getElementById('eventDescription');
   const eventTag = document.getElementById('eventTag');
   const deleteBtn = document.getElementById('deleteEvent');
+  const allDayEvent = document.getElementById('allDayEvent');
+  const startDateLabel = document.getElementById('startDateLabel');
+  const endDateLabel = document.getElementById('endDateLabel');
   
-  const currentYear = new Date().getFullYear();
-  const actualYear = year || currentYear;
-  const dateStr = `${actualYear}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const today = new Date();
+  const actualDay = day || today.getDate();
+  const actualMonth = month !== undefined ? month : today.getMonth();
+  const actualYear = year || today.getFullYear();
+  const dateStr = `${actualYear}-${String(actualMonth + 1).padStart(2, '0')}-${String(actualDay).padStart(2, '0')}`;
   const timeStr = `${String(hour).padStart(2, '0')}:00`;
   const endTimeStr = `${String(hour + 1).padStart(2, '0')}:00`;
+  
+  eventDateTime.type = 'datetime-local';
+  eventEndDateTime.type = 'datetime-local';
   eventDateTime.value = `${dateStr}T${timeStr}`;
   eventEndDateTime.value = `${dateStr}T${endTimeStr}`;
   eventTitle.value = '';
   eventDescription.value = '';
   eventTag.value = '';
+  allDayEvent.checked = false;
+  startDateLabel.textContent = 'Data e Ora Inizio';
+  endDateLabel.textContent = 'Data e Ora Fine';
   document.querySelector('input[name="eventType"][value="evento"]').checked = true;
   deleteBtn.style.display = 'none';
   editingEventId = null;
@@ -367,6 +429,7 @@ function saveEvent() {
   const type = document.querySelector('input[name="eventType"]:checked').value;
   const description = document.getElementById('eventDescription').value.trim();
   const tag = document.getElementById('eventTag').value;
+  const allDay = document.getElementById('allDayEvent').checked;
   
   if (!datetime) {
     return;
@@ -382,7 +445,8 @@ function saveEvent() {
     endDatetime,
     type,
     description,
-    tag
+    tag,
+    allDay
   };
   
   if (editingEventId) {
@@ -412,9 +476,22 @@ function saveEvent() {
   renderWeekEvents();
 }
 
+let confirmCallback = null;
+
+function showConfirm(title, message, callback) {
+  const modal = document.getElementById('confirmModal');
+  const titleEl = document.getElementById('confirmTitle');
+  const messageEl = document.getElementById('confirmMessage');
+  
+  titleEl.textContent = title;
+  messageEl.textContent = message;
+  confirmCallback = callback;
+  modal.style.display = 'block';
+}
+
 function deleteEvent(e, dateKey, eventId) {
   e.stopPropagation();
-  if (confirm('Sei sicuro di voler eliminare questo evento?')) {
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
     for (const key in events) {
       events[key] = events[key].filter(event => event.id !== eventId);
       if (events[key].length === 0) {
@@ -426,7 +503,7 @@ function deleteEvent(e, dateKey, eventId) {
     else if (currentView === 'day') renderDayViewInline();
     renderTodayEvents();
     renderWeekEvents();
-  }
+  });
 }
 
 function renderTodayEvents() {
@@ -435,26 +512,26 @@ function renderTodayEvents() {
   const todayDateKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
   
   const todayEventsList = [];
-  
-  if (events[todayDateKey]) {
-    events[todayDateKey].forEach(event => {
-      const eventDate = new Date(event.datetime);
-      if (eventDate.toDateString() === today.toDateString()) {
-        todayEventsList.push(event);
-      }
-    });
-  }
+  const addedEventIds = new Set();
   
   for (const dateKey in events) {
     events[dateKey].forEach(event => {
-      if (event.endDatetime) {
-        const eventEndDate = new Date(event.endDatetime);
-        if (eventEndDate.toDateString() === today.toDateString() && dateKey !== todayDateKey) {
-          const tag = tags.find(t => t.id == event.tag);
-          if (!event.tag || tag) {
-            const modifiedEvent = { ...event, title: `Fine (${event.title})`, datetime: event.endDatetime };
-            todayEventsList.push(modifiedEvent);
-          }
+      if (addedEventIds.has(event.id)) return;
+      
+      const eventStart = new Date(event.datetime);
+      const eventEnd = event.endDatetime ? new Date(event.endDatetime) : eventStart;
+      const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
+      if ((eventStart <= endOfToday && eventEnd >= startOfToday)) {
+        const tag = tags.find(t => t.id == event.tag);
+        if (!event.tag || (tag && tag.visible)) {
+          todayEventsList.push({
+            ...event,
+            displayTitle: getEventDisplayTitle(event, todayDateKey),
+            dateKey: todayDateKey
+          });
+          addedEventIds.add(event.id);
         }
       }
     });
@@ -462,17 +539,17 @@ function renderTodayEvents() {
   
   if (todayEventsList.length > 0) {
     todayEvents.innerHTML = todayEventsList.map(event => {
-      const eventTime = new Date(event.datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      const eventTime = event.allDay ? 'Tutto il giorno' : new Date(event.datetime).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
       const tag = tags.find(t => t.id == event.tag);
       const tagName = tag ? tag.name : '';
       return `
-        <div class="event" onclick="editEvent('${todayDateKey}', ${event.id})">
+        <div class="event" onclick="editEvent('${event.dateKey}', ${event.id})">
           <div class="event-color" style="background: ${getEventColor(event.tag)}"></div>
           <div class="event-info">
-            <h4>${event.title}</h4>
+            <h4>${event.displayTitle}</h4>
             <span>${eventTime} - ${event.type}${tagName ? ' - ' + tagName : ''}</span>
           </div>
-          <button class="delete-event" onclick="deleteEvent(event, '${todayDateKey}', ${event.id})">
+          <button class="delete-event" onclick="deleteEvent(event, '${event.dateKey}', ${event.id})">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -493,91 +570,43 @@ function renderWeekEvents() {
   weekEnd.setDate(today.getDate() + 6);
   
   const weekEventsList = [];
-  for (let i = 1; i <= 6; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-    
-    if (events[dateKey]) {
-      events[dateKey].forEach(event => {
-        const eventDate = new Date(event.datetime);
-        const eventEndDate = event.endDatetime ? new Date(event.endDatetime) : eventDate;
-        
-        if ((eventDate >= tomorrow && eventDate <= weekEnd) ||
-            (eventEndDate >= tomorrow && eventEndDate <= weekEnd) ||
-            (eventDate < tomorrow && eventEndDate > weekEnd)) {
-          
-          const eventTime = eventDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-          const currentEventDate = new Date(dateKey.split('-').map((part, index) => index === 1 ? parseInt(part) - 1 : parseInt(part)));
-          
-          let eventTitle = event.title;
-          if (event.endDatetime) {
-            const startDateKey = `${eventDate.getFullYear()}-${eventDate.getMonth() + 1}-${eventDate.getDate()}`;
-            const endDateKey = `${eventEndDate.getFullYear()}-${eventEndDate.getMonth() + 1}-${eventEndDate.getDate()}`;
-            
-            if (startDateKey !== endDateKey) {
-              if (dateKey === startDateKey) {
-                eventTitle = `Inizio (${event.title})`;
-              } else if (dateKey === endDateKey) {
-                eventTitle = `Fine (${event.title})`;
-              }
-            }
-          }
-          
-          const tag = tags.find(t => t.id == event.tag);
-          const tagName = tag ? tag.name : '';
-          
-          weekEventsList.push({
-            id: event.id,
-            title: eventTitle,
-            time: eventTime,
-            type: event.type,
-            date: currentEventDate.getDate(),
-            month: months[currentEventDate.getMonth()].slice(0, 3),
-            dateKey: dateKey,
-            tag: event.tag,
-            tagName: tagName
-          });
-        }
-      });
-    }
-  }
+  const addedEventIds = new Set();
   
   for (let i = 1; i <= 6; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    const dateKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + i);
+    const targetDateKey = `${targetDate.getFullYear()}-${targetDate.getMonth() + 1}-${targetDate.getDate()}`;
     
-    for (const eventDateKey in events) {
-      events[eventDateKey].forEach(event => {
-        if (event.endDatetime) {
-          const eventEndDate = new Date(event.endDatetime);
-          const endDateKey = `${eventEndDate.getFullYear()}-${eventEndDate.getMonth() + 1}-${eventEndDate.getDate()}`;
-          
-          if (endDateKey === dateKey && eventDateKey !== endDateKey) {
-            const tag = tags.find(t => t.id == event.tag);
-            if (!event.tag || tag) {
-              const eventTime = eventEndDate.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-              const tagName = tag ? tag.name : '';
-              
-              const alreadyAdded = weekEventsList.some(item => 
-                item.id === event.id && item.title.startsWith('Fine (')
-              );
-              
-              if (!alreadyAdded) {
-                weekEventsList.push({
-                  id: event.id,
-                  title: `Fine (${event.title})`,
-                  time: eventTime,
-                  type: event.type,
-                  date: eventEndDate.getDate(),
-                  month: months[eventEndDate.getMonth()].slice(0, 3),
-                  dateKey: endDateKey,
-                  tag: event.tag,
-                  tagName: tagName
-                });
-              }
-            }
+    for (const dateKey in events) {
+      events[dateKey].forEach(event => {
+        if (addedEventIds.has(`${event.id}-${targetDateKey}`)) return;
+        
+        const eventStart = new Date(event.datetime);
+        const eventEnd = event.endDatetime ? new Date(event.endDatetime) : eventStart;
+        const startOfTarget = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        const endOfTarget = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59);
+        
+        if ((eventStart <= endOfTarget && eventEnd >= startOfTarget)) {
+          const tag = tags.find(t => t.id == event.tag);
+          if (!event.tag || (tag && tag.visible)) {
+            const eventTime = event.allDay ? 'Tutto il giorno' : eventStart.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            
+            const eventTitle = getEventDisplayTitle(event, targetDateKey);
+            const tagName = tag ? tag.name : '';
+            
+            weekEventsList.push({
+              id: event.id,
+              title: eventTitle,
+              time: eventTime,
+              type: event.type,
+              date: targetDate.getDate(),
+              month: months[targetDate.getMonth()].slice(0, 3),
+              dateKey: targetDateKey,
+              tag: event.tag,
+              tagName: tagName
+            });
+            
+            addedEventIds.add(`${event.id}-${targetDateKey}`);
           }
         }
       });
@@ -775,21 +804,77 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  document.getElementById('allDayEvent').addEventListener('change', function() {
+    const eventDateTime = document.getElementById('eventDateTime');
+    const eventEndDateTime = document.getElementById('eventEndDateTime');
+    const startDateLabel = document.getElementById('startDateLabel');
+    const endDateLabel = document.getElementById('endDateLabel');
+    
+    if (this.checked) {
+      const currentStartValue = eventDateTime.value;
+      const currentEndValue = eventEndDateTime.value;
+      
+      eventDateTime.type = 'date';
+      eventEndDateTime.type = 'date';
+      
+      if (currentStartValue) {
+        eventDateTime.value = currentStartValue.split('T')[0];
+      }
+      if (currentEndValue) {
+        eventEndDateTime.value = currentEndValue.split('T')[0];
+      }
+      
+      startDateLabel.textContent = 'Data Inizio';
+      endDateLabel.textContent = 'Data Fine';
+    } else {
+      const currentStartValue = eventDateTime.value;
+      const currentEndValue = eventEndDateTime.value;
+      
+      eventDateTime.type = 'datetime-local';
+      eventEndDateTime.type = 'datetime-local';
+      
+      if (currentStartValue) {
+        eventDateTime.value = `${currentStartValue}T09:00`;
+      }
+      if (currentEndValue) {
+        eventEndDateTime.value = `${currentEndValue}T10:00`;
+      }
+      
+      startDateLabel.textContent = 'Data e Ora Inizio';
+      endDateLabel.textContent = 'Data e Ora Fine';
+    }
+  });
+
   document.getElementById('deleteEvent').addEventListener('click', () => {
     if (editingEventId) {
-      for (const dateKey in events) {
-        events[dateKey] = events[dateKey].filter(e => e.id !== editingEventId);
-        if (events[dateKey].length === 0) {
-          delete events[dateKey];
+      showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
+        for (const dateKey in events) {
+          events[dateKey] = events[dateKey].filter(e => e.id !== editingEventId);
+          if (events[dateKey].length === 0) {
+            delete events[dateKey];
+          }
         }
-      }
-      document.getElementById('eventModal').style.display = 'none';
-      if (currentView === 'month') renderCalendar();
-      else if (currentView === 'week') renderWeekViewInline();
-      else if (currentView === 'day') renderDayViewInline();
-      renderTodayEvents();
-      renderWeekEvents();
+        document.getElementById('eventModal').style.display = 'none';
+        if (currentView === 'month') renderCalendar();
+        else if (currentView === 'week') renderWeekViewInline();
+        else if (currentView === 'day') renderDayViewInline();
+        renderTodayEvents();
+        renderWeekEvents();
+      });
     }
+  });
+
+  document.getElementById('confirmYes').addEventListener('click', () => {
+    if (confirmCallback) {
+      confirmCallback();
+      confirmCallback = null;
+    }
+    document.getElementById('confirmModal').style.display = 'none';
+  });
+
+  document.getElementById('confirmNo').addEventListener('click', () => {
+    confirmCallback = null;
+    document.getElementById('confirmModal').style.display = 'none';
   });
 
   renderTagsList();
@@ -828,13 +913,15 @@ function toggleTag(tagId) {
   if (tag) {
     tag.visible = !tag.visible;
     renderTagsList();
+    renderTodayEvents();
+    renderWeekEvents();
     if (currentView === 'month') renderCalendar();
     else if (currentView === 'week') renderWeekViewInline();
     else if (currentView === 'day') renderDayViewInline();
   }
 }
 function deleteTag(tagId) {
-  if (confirm('Sei sicuro di voler eliminare questo tag? Tutti gli eventi associati verranno rimossi.')) {
+  showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag? Tutti gli eventi associati verranno rimossi.', () => {
     for (const dateKey in events) {
       events[dateKey] = events[dateKey].filter(event => event.tag != tagId);
       if (events[dateKey].length === 0) {
@@ -848,7 +935,7 @@ function deleteTag(tagId) {
     if (currentView === 'month') renderCalendar();
     else if (currentView === 'week') renderWeekViewInline();
     else if (currentView === 'day') renderDayViewInline();
-  }
+  });
 }
 let editingTagId = null;
 
