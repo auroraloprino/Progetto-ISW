@@ -1,7 +1,7 @@
 <template>
 <div class="auth-wrapper">
  <div class="auth-card">
-  <h2>Area privata</h2>
+  <h2>Account</h2>
   <p>Benvenuto {{user?.email}}</p>
   <button @click="doLogout">Logout</button>
  </div>
