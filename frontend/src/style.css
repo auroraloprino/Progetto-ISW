@@ -1173,31 +1173,3 @@ nav {
   font-weight:700;
   cursor:pointer;
 }
-
-.notify-panel {
-  position:absolute;
-  top:80px;
-  right:20px;
-  width:380px;
-  background:#f3dab4;
-  border:3px solid #0d4853;
-  padding:1rem;
-}
-
-.notify-panel h3 {
-  color:#0d4853;
-  margin-bottom:1rem;
-}
-
-.notify-item {
-  border-bottom:1px solid #0d4853;
-  padding:.75rem 0;
-  font-size:.85rem;
-}
-
-.notify-item span {
-  color:#0d4853;
-  font-weight:700;
-  float:right;
-  cursor:pointer;
-}
