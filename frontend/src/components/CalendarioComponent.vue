@@ -91,7 +91,7 @@
         <div v-show="currentView === 'week'" class="week-view">
           <div class="week-nav">
             <button @click="prevWeek"><i class="fas fa-chevron-left"></i></button>
-            <h3>Settimana {{ getWeekNumber() }}</h3>
+            <h3></h3>
             <button @click="nextWeek"><i class="fas fa-chevron-right"></i></button>
           </div>
           <div class="week-header">
