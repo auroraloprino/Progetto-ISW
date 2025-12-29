@@ -1,19 +1,19 @@
 <template>
-<div class="auth-wrapper">
- <div class="auth-card">
-  <h2>Crea account</h2>
+<div class="chronio-auth">
+  <div class="auth-box">
+    <div class="auth-logo">CHRONIO</div>
 
-  <input v-model="user" placeholder="Username / Email">
-  <input v-model="pass" type="password" placeholder="Password">
-  <input v-model="confirm" type="password" placeholder="Conferma Password">
+    <input v-model="user" placeholder="Username / Email">
+    <input v-model="pass" type="password" placeholder="Password">
+    <input v-model="confirm" type="password" placeholder="Conferma Password">
 
-  <button @click="doRegister">Registrati</button>
+    <button @click="doRegister">Registrati</button>
 
-  <div class="switch">
-   Hai già un account?
-   <span @click="$router.push('/login')">Accedi</span>
+    <div class="switch">
+      Hai un account?
+      <span @click="$router.push('/login')">Accedi</span>
+    </div>
   </div>
- </div>
 </div>
 </template>
 
