@@ -1,41 +1,45 @@
 <template>
-<div class="account-page">
-
-
-  <div class="auth-box account-box">
-    <div class="auth-logo">CHRONIO</div>
-
-
-    <div class="profile-field">
-      <label>USERNAME</label>
-      <div class="profile-value">{{user?.email}}</div>
+  <nav>
+    <div class="logo">CHRONIO</div>
+    <div class="nav-links">
+      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
+      <RouterLink to="#"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
+      <RouterLink to="#"><i class="fas fa-wallet"></i> Budget</RouterLink>
+      <RouterLink to="/dashboard" class="active"><i class="fas fa-user-circle"></i> Account</RouterLink>
     </div>
+  </nav>
 
+  <div class="account-wrapper">
 
-    <div class="profile-actions">
-      <button @click="logoutAndGo">LOGOUT</button>
+    <div class="account-card">
+
+      <div class="avatar">
+        <img src="#" />
+      </div>
+
+      <div class="username-bar">
+        {{ user?.email }}
+      </div>
+
+      <div class="account-actions">
+        <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
+      </div>
+
     </div>
-
 
   </div>
-
-
-</div>
 </template>
-
 
 <script setup lang="ts">
 import { currentUser, logout } from '../auth/auth'
 import { useRouter } from 'vue-router'
 
-
-const router = useRouter()
 const user = currentUser()
+const router = useRouter()
 
-
-function logoutAndGo(){
- logout()
- router.push('/login')
+function logoutAndGo() {
+  logout()
+  router.push('/login')
 }
 </script>
 

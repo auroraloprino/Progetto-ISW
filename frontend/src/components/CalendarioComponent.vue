@@ -1,12 +1,11 @@
 <template>
   <div>
-    <nav>
-      <div class="logo">CHRONIO</div>
+    <nav> <div class="logo">CHRONIO</div> 
       <div class="nav-links">
         <a href="#" class="active"><i class="fas fa-calendar-alt"></i> Calendario</a>
         <a href="#"><i class="fas fa-clipboard"></i> Bacheche</a>
         <a href="#"><i class="fas fa-wallet"></i> Budget</a>
-        <a href="#"><i class="fas fa-user-circle"></i> Account</a>
+        <a href="#"><i class="fas fa-user-circle"></i> Account</a> 
       </div>
     </nav>
     
