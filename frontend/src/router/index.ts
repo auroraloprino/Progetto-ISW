@@ -4,6 +4,8 @@ import CalendarioComponent from '../components/CalendarioComponent.vue'
 import LoginView from '../views/Login.vue'
 import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
+import Bacheche from '../views/Bacheche.vue'
+import Budget from '../views/Budget.vue'
 
 import { currentUser } from '../auth/auth'
 
@@ -13,6 +15,16 @@ const routes = [
   {
     path: '/calendario',
     component: CalendarioComponent,
+    meta: { auth: true }
+  },
+  {
+    path: '/bacheche',
+    component: Bacheche,
+    meta: { auth: true }
+  },
+  {
+    path: '/budget',
+    component: Budget,
     meta: { auth: true }
   },
   {
