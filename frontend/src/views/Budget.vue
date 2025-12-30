@@ -11,7 +11,7 @@
 
   <div class="page-content">
     <h1>Budget</h1>
-    <p>Funzionalità in arrivo...</p>
+    <p>TBA</p>
   </div>
 </template>
 

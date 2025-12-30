@@ -4,6 +4,7 @@ const SESSION_KEY = "auth_session"
 export interface User {
   email: string
   password: string
+  profileImage?: string
 }
 
 export function getUsers():User[]{
@@ -35,4 +36,19 @@ export function logout(){
 
 export function currentUser():User|null{
   return JSON.parse(localStorage.getItem(SESSION_KEY) || "null")
+}
+
+export function updateUser(userData: Partial<User>): void {
+  const user = currentUser()
+  if (user) {
+    const updatedUser = { ...user, ...userData }
+    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser))
+    
+    const users = getUsers()
+    const userIndex = users.findIndex(u => u.email === user.email)
+    if (userIndex !== -1) {
+      users[userIndex] = updatedUser
+      saveUsers(users)
+    }
+  }
 }
