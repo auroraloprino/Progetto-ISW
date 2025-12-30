@@ -1,11 +1,17 @@
 export const loadTheme = () => {
-  // Load theme from localStorage or set default
+  const theme = localStorage.getItem('theme') || 'light'
+  document.documentElement.setAttribute('data-theme', theme)
+  return theme
 }
 
 export const toggleTheme = () => {
-  // Toggle between light and dark theme
+  const current = getCurrentTheme()
+  const newTheme = current === 'light' ? 'dark' : 'light'
+  localStorage.setItem('theme', newTheme)
+  document.documentElement.setAttribute('data-theme', newTheme)
+  return newTheme
 }
 
 export const getCurrentTheme = () => {
-  return 'light'
+  return localStorage.getItem('theme') || 'light'
 }

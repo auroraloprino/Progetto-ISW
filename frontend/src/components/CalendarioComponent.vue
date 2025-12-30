@@ -190,6 +190,13 @@
                 class="event"
                 @click="editEvent(event.dateKey, event.id)"
               >
+                <button 
+                  class="event-delete-btn"
+                  @click.stop="deleteEventFromSidebar(event.dateKey, event.id)"
+                  title="Elimina evento"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
                 <div class="event-color" :style="{ background: getEventColor(event.tag) }"></div>
                 <div class="event-info">
                   <h4>{{ event.displayTitle }}</h4>
@@ -211,6 +218,13 @@
                 class="event"
                 @click="editEvent(event.dateKey, event.id)"
               >
+                <button 
+                  class="event-delete-btn"
+                  @click.stop="deleteEventFromSidebar(event.dateKey, event.id)"
+                  title="Elimina evento"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
                 <div class="event-color" :style="{ background: getEventColor(event.tag) }"></div>
                 <div class="event-info">
                   <h4>{{ event.title }}</h4>
@@ -386,6 +400,38 @@ const confirmModal = ref<ConfirmModal>({
 
 const tagIdCounter = ref(1)
 const eventIdCounter = ref(1)
+
+const TAGS_KEY = 'calendar_tags'
+const EVENTS_KEY = 'calendar_events'
+
+const loadData = () => {
+  const savedTags = localStorage.getItem(TAGS_KEY)
+  const savedEvents = localStorage.getItem(EVENTS_KEY)
+  
+  if (savedTags) {
+    const data = JSON.parse(savedTags)
+    tags.value = data.tags
+    tagIdCounter.value = data.nextId
+  }
+  
+  if (savedEvents) {
+    const data = JSON.parse(savedEvents)
+    events.value = data.events
+    eventIdCounter.value = data.nextId
+  }
+}
+
+const saveData = () => {
+  localStorage.setItem(TAGS_KEY, JSON.stringify({
+    tags: tags.value,
+    nextId: tagIdCounter.value
+  }))
+  
+  localStorage.setItem(EVENTS_KEY, JSON.stringify({
+    events: events.value,
+    nextId: eventIdCounter.value
+  }))
+}
 
 const calendarDays = computed(() => {
   const days = []
@@ -656,6 +702,7 @@ const toggleTag = (tagId: number) => {
   const tag = tags.value.find(t => t.id === tagId)
   if (tag) {
     tag.visible = !tag.visible
+    saveData()
   }
 }
 
@@ -696,6 +743,7 @@ const saveTag = () => {
     })
   }
   
+  saveData()
   closeTagModal()
 }
 
@@ -709,6 +757,7 @@ const deleteTag = (tagId: number) => {
     }
     
     tags.value = tags.value.filter(t => t.id !== tagId)
+    saveData()
   })
 }
 
@@ -802,6 +851,7 @@ const saveEvent = () => {
     currentDate.setDate(currentDate.getDate() + 1)
   }
   
+  saveData()
   closeEventModal()
 }
 
@@ -816,6 +866,7 @@ const deleteEvent = () => {
           delete events.value[dateKey]
         }
       }
+      saveData()
     }
     closeEventModal()
   })
@@ -880,6 +931,18 @@ const getAllDayEvents = (): Event[] => {
   return dayEvents.filter(event => event.allDay).filter(event => {
     const tag = tags.value.find(t => t.id === event.tag)
     return !event.tag || (tag?.visible)
+  })
+}
+
+const deleteEventFromSidebar = (dateKey: string, eventId: number) => {
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
+    for (const key in events.value) {
+      events.value[key] = events.value[key].filter(e => e.id !== eventId)
+      if (events.value[key].length === 0) {
+        delete events.value[key]
+      }
+    }
+    saveData()
   })
 }
 
@@ -957,6 +1020,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 }
 
 onMounted(() => {
+  loadData()
   document.addEventListener('keydown', handleKeydown)
 })
 </script>
