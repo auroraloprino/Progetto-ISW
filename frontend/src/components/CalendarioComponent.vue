@@ -2,10 +2,10 @@
   <div>
     <nav> <div class="logo">CHRONIO</div> 
       <div class="nav-links">
-        <a href="#" class="active"><i class="fas fa-calendar-alt"></i> Calendario</a>
-        <a href="#"><i class="fas fa-clipboard"></i> Bacheche</a>
-        <a href="#"><i class="fas fa-wallet"></i> Budget</a>
-        <a href="#"><i class="fas fa-user-circle"></i> Account</a> 
+        <RouterLink to="/calendario" class="active"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
+        <RouterLink to="#"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
+        <RouterLink to="#"><i class="fas fa-wallet"></i> Budget</RouterLink>
+        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink> 
       </div>
     </nav>
     

@@ -28,6 +28,6 @@ const pass = ref('')
 function doLogin(){
  if(!login(user.value, pass.value))
   alert("Credenziali errate")
- else router.push('/dashboard')
+ else router.push('/calendario')
 }
 </script>

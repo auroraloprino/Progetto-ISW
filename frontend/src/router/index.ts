@@ -8,7 +8,7 @@ import DashboardView from '../views/DashboardView.vue'
 import { currentUser } from '../auth/auth'
 
 const routes = [
-  { path: '/', redirect: '/calendario' },
+  { path: '/', redirect: '/login' },
 
   {
     path: '/calendario',
@@ -16,7 +16,7 @@ const routes = [
     meta: { auth: true }
   },
   {
-    path: '/dashboard',      
+    path: '/account',      
     component: DashboardView,
     meta: { auth: true }
   },

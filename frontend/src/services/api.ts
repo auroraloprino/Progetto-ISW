@@ -4,7 +4,6 @@ import type { Event, Tag } from '../types/calendar'
 const API_BASE = '/api'
 
 export const calendarAPI = {
-  // Events
   async getEvents(): Promise<Event[]> {
     const response = await axios.get(`${API_BASE}/calendario/events`)
     return response.data
@@ -24,7 +23,6 @@ export const calendarAPI = {
     await axios.delete(`${API_BASE}/calendario/events/${id}`)
   },
 
-  // Tags
   async getTags(): Promise<Tag[]> {
     const response = await axios.get(`${API_BASE}/calendario/tags`)
     return response.data
