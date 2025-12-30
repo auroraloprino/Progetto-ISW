@@ -11,8 +11,19 @@
 
   <div class="account-wrapper">
     <div class="account-card">
-      <div class="avatar">
-        <img src="#" />
+      <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
+        <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
+        <i v-else class="fas fa-user-circle"></i>
+        <div class="upload-overlay">
+          <i class="fas fa-camera"></i>
+        </div>
+        <input 
+          ref="fileInput" 
+          type="file" 
+          accept="image/*" 
+          @change="handleImageUpload" 
+          style="display: none"
+        />
       </div>
 
       <div class="username-bar">
@@ -34,13 +45,16 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { currentUser, logout } from '../auth/auth'
+import { currentUser, logout, updateUser, type User } from '../auth/auth'
+import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
 
-const user = currentUser()
+const user = ref<User | null>(currentUser())
 const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
+const isUploading = ref(false)
+const fileInput = ref<HTMLInputElement>()
 
 function logoutAndGo() {
   logout()
@@ -50,6 +64,23 @@ function logoutAndGo() {
 function handleToggleTheme() {
   toggleTheme()
   currentThemeMode.value = getCurrentTheme()
+}
+
+const handleImageUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  isUploading.value = true
+  try {
+    const imageUrl = await uploadProfileImage(file)
+    updateUser({ profileImage: imageUrl })
+    user.value = currentUser()
+  } catch (error) {
+    console.error('Errore upload:', error)
+  } finally {
+    isUploading.value = false
+  }
 }
 
 onMounted(() => {
