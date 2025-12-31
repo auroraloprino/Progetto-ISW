@@ -1,0 +1,193 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import type { TransactionType } from '../types';
+
+interface Props {
+  type: TransactionType;
+  visible: boolean;
+}
+
+interface Emits {
+  (e: 'submit', description: string, amount: number, date: Date): void;
+  (e: 'cancel'): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+const description = ref('');
+const amount = ref<number | null>(null);
+const date = ref<string>('');
+
+// Initialize date to today
+const initializeDate = () => {
+  const today = new Date();
+  date.value = today.toISOString().split('T')[0]!;
+};
+
+initializeDate();
+
+// Watch visible prop to reset form when shown
+watch(() => props.visible, (newVisible) => {
+  if (newVisible) {
+    resetForm();
+  }
+});
+
+const resetForm = () => {
+  description.value = '';
+  amount.value = null;
+  initializeDate();
+};
+
+const handleSubmit = () => {
+  if (description.value && amount.value && date.value) {
+    const selectedDate = new Date(date.value);
+    emit('submit', description.value, amount.value, selectedDate);
+    resetForm();
+  }
+};
+
+const handleCancel = () => {
+  emit('cancel');
+  resetForm();
+};
+
+const getLabel = () => {
+  return props.type === 'income' ? 'Descrizione Entrata in denaro' : 'Descrizione Uscita in denaro';
+};
+
+const getPlaceholder = () => {
+  return props.type === 'income' ? 'es. Stipendio' : 'es. Ristorante';
+};
+</script>
+
+<template>
+  <form v-if="visible" class="transaction-form" @submit.prevent="handleSubmit">
+    <div class="form-group">
+      <label>{{ getLabel() }}</label>
+      <input 
+        v-model="description" 
+        type="text" 
+        :placeholder="getPlaceholder()" 
+        required
+      />
+    </div>
+    
+    <div class="form-group">
+      <input 
+        v-model.number="amount" 
+        type="number" 
+        placeholder="Importo" 
+        step="0.01" 
+        min="0" 
+        required
+      />
+    </div>
+    
+    <div class="form-group">
+      <input 
+        v-model="date" 
+        type="date" 
+        required
+      />
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="btn-save">Salva</button>
+      <button type="button" class="btn-cancel" @click="handleCancel">Cancella</button>
+    </div>
+  </form>
+</template>
+
+<style scoped>
+.transaction-form {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  color: var(--text-light, #e8f4f3);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.7);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btn-save,
+.btn-cancel {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+}
+
+.btn-cancel {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-light, #e8f4f3);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
