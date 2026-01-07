@@ -149,7 +149,7 @@ const balanceColor = computed(() => {
 <style scoped>
 .budget-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
   margin-top: 2rem;
 }
@@ -161,8 +161,9 @@ const balanceColor = computed(() => {
   padding: 2rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   position: relative;
-  min-height: 400px;
+  min-height: 550px;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .card:hover {
@@ -183,6 +184,8 @@ const balanceColor = computed(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  padding: 0;
 }
 
 .date-range-selector {
@@ -190,6 +193,7 @@ const balanceColor = computed(() => {
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+  box-sizing: border-box;
 }
 
 .date-input-group {
@@ -249,6 +253,9 @@ const balanceColor = computed(() => {
   border-radius: 8px;
   padding: 1.5rem;
   flex: 1;
+  overflow: hidden;
+  box-sizing: border-box;
+  margin: 0 0.5rem 0.5rem 0.5rem;
 }
 
 .summary-row {
@@ -279,6 +286,8 @@ const balanceColor = computed(() => {
   font-size: 1.3rem;
   font-weight: 700;
   font-family: 'Playfair Display', serif;
+  word-wrap: break-word;
+  text-align: right;
 }
 
 .income-value {
@@ -296,9 +305,16 @@ const balanceColor = computed(() => {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .budget-container {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 1100px) {
+  .budget-container {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
