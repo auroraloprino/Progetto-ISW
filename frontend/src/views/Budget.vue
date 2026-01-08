@@ -8,6 +8,7 @@ const {
   incomeTransactions,
   expenseTransactions,
   addTransaction,
+  updateTransaction,
   deleteTransaction,
   calculateBudget
 } = useBudget();
@@ -51,6 +52,15 @@ const handleDeleteTransaction = (id: string) => {
   deleteTransaction(id);
 };
 
+const handleUpdateTransaction = (
+  id: string,
+  description: string,
+  amount: number,
+  date: Date
+) => {
+  updateTransaction(id, description, amount, date);
+};
+
 const handleCalculate = () => {
   if (startDate.value && endDate.value) {
     const start = new Date(startDate.value);
@@ -92,6 +102,7 @@ const balanceColor = computed(() => {
         type="income"
         :transactions="incomeTransactions"
         @add="handleAddTransaction"
+        @update="handleUpdateTransaction"
         @delete="handleDeleteTransaction"
       />
 
@@ -101,6 +112,7 @@ const balanceColor = computed(() => {
         type="expense"
         :transactions="expenseTransactions"
         @add="handleAddTransaction"
+        @update="handleUpdateTransaction"
         @delete="handleDeleteTransaction"
       />
 

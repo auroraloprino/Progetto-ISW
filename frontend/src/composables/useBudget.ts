@@ -67,6 +67,31 @@ export function useBudget() {
     return false;
   };
 
+  // Update transaction
+  const updateTransaction = (
+    id: string,
+    description: string,
+    amount: number,
+    date: Date
+  ): boolean => {
+    const index = transactions.value.findIndex(t => t.id === id);
+    if (index !== -1) {
+      const existing = transactions.value[index];
+      if (!existing) return false;
+      
+      transactions.value[index] = {
+        id: existing.id,
+        type: existing.type,
+        description,
+        amount,
+        date
+      };
+      saveToStorage();
+      return true;
+    }
+    return false;
+  };
+
   // Get transactions by date range
   const getTransactionsByDateRange = (dateRange: DateRange): Transaction[] => {
     return transactions.value.filter(transaction => {
@@ -119,6 +144,7 @@ export function useBudget() {
     incomeTransactions,
     expenseTransactions,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     calculateBudget,
     getTransactionsByDateRange

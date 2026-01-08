@@ -12,6 +12,7 @@ interface Props {
 
 interface Emits {
   (e: 'add', type: TransactionType, description: string, amount: number, date: Date): void;
+  (e: 'update', id: string, description: string, amount: number, date: Date): void;
   (e: 'delete', id: string): void;
 }
 
@@ -19,22 +20,37 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const showForm = ref(false);
+const editingTransaction = ref<Transaction | null>(null);
 
 const handleAddClick = () => {
+  editingTransaction.value = null;
   showForm.value = !showForm.value;
 };
 
 const handleFormSubmit = (description: string, amount: number, date: Date) => {
-  emit('add', props.type, description, amount, date);
+  if (editingTransaction.value) {
+    // Modalità modifica
+    emit('update', editingTransaction.value.id, description, amount, date);
+  } else {
+    // Modalità aggiunta
+    emit('add', props.type, description, amount, date);
+  }
   showForm.value = false;
+  editingTransaction.value = null;
 };
 
 const handleFormCancel = () => {
   showForm.value = false;
+  editingTransaction.value = null;
 };
 
 const handleDelete = (id: string) => {
   emit('delete', id);
+};
+
+const handleEdit = (transaction: Transaction) => {
+  editingTransaction.value = transaction;
+  showForm.value = true;
 };
 
 const getEmptyMessage = () => {
@@ -44,12 +60,15 @@ const getEmptyMessage = () => {
 
 <template>
   <div class="card transaction-card">
-    <button class="card-add-btn" @click="handleAddClick">+</button>
+    <button class="card-add-btn" @click="handleAddClick" :title="editingTransaction ? 'Annulla modifica' : 'Aggiungi'">
+      {{ showForm && editingTransaction ? '✕' : '+' }}
+    </button>
     <h2 class="card-title">{{ title }}</h2>
     
     <TransactionForm
       :type="type"
       :visible="showForm"
+      :editing-transaction="editingTransaction"
       @submit="handleFormSubmit"
       @cancel="handleFormCancel"
     />
@@ -57,6 +76,7 @@ const getEmptyMessage = () => {
     <TransactionList
       :transactions="transactions"
       :empty-message="getEmptyMessage()"
+      @edit="handleEdit"
       @delete="handleDelete"
     />
   </div>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import type { TransactionType } from '../types';
+import type { TransactionType, Transaction } from '../types';
 
 interface Props {
   type: TransactionType;
   visible: boolean;
+  editingTransaction?: Transaction | null;
 }
 
 interface Emits {
@@ -27,10 +28,29 @@ const initializeDate = () => {
 
 initializeDate();
 
-// Watch visible prop to reset form when shown
+// Watch visible prop to reset or populate form
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
-    resetForm();
+    if (props.editingTransaction) {
+      // Modalità modifica: popola il form con i dati esistenti
+      description.value = props.editingTransaction.description;
+      amount.value = props.editingTransaction.amount;
+      const transactionDate = new Date(props.editingTransaction.date);
+      date.value = transactionDate.toISOString().split('T')[0]!;
+    } else {
+      // Modalità aggiunta: resetta il form
+      resetForm();
+    }
+  }
+});
+
+// Watch editingTransaction changes
+watch(() => props.editingTransaction, (newTransaction) => {
+  if (newTransaction && props.visible) {
+    description.value = newTransaction.description;
+    amount.value = newTransaction.amount;
+    const transactionDate = new Date(newTransaction.date);
+    date.value = transactionDate.toISOString().split('T')[0]!;
   }
 });
 
@@ -60,10 +80,22 @@ const getLabel = () => {
 const getPlaceholder = () => {
   return props.type === 'income' ? 'es. Stipendio' : 'es. Ristorante';
 };
+
+const getTitle = () => {
+  return props.editingTransaction ? 'Modifica Transazione' : 'Nuova Transazione';
+};
+
+const getSubmitLabel = () => {
+  return props.editingTransaction ? 'Aggiorna' : 'Salva';
+};
 </script>
 
 <template>
   <form v-if="visible" class="transaction-form" @submit.prevent="handleSubmit">
+    <div class="form-header">
+      <h3>{{ getTitle() }}</h3>
+    </div>
+    
     <div class="form-group">
       <label>{{ getLabel() }}</label>
       <input 
@@ -75,10 +107,11 @@ const getPlaceholder = () => {
     </div>
     
     <div class="form-group">
+      <label>Importo (€)</label>
       <input 
         v-model.number="amount" 
         type="number" 
-        placeholder="Importo" 
+        placeholder="0.00" 
         step="0.01" 
         min="0" 
         required
@@ -86,6 +119,7 @@ const getPlaceholder = () => {
     </div>
     
     <div class="form-group">
+      <label>Data</label>
       <input 
         v-model="date" 
         type="date" 
@@ -94,8 +128,8 @@ const getPlaceholder = () => {
     </div>
     
     <div class="form-actions">
-      <button type="submit" class="btn-save">Salva</button>
-      <button type="button" class="btn-cancel" @click="handleCancel">Cancella</button>
+      <button type="submit" class="btn-save">{{ getSubmitLabel() }}</button>
+      <button type="button" class="btn-cancel" @click="handleCancel">Annulla</button>
     </div>
   </form>
 </template>
@@ -107,6 +141,20 @@ const getPlaceholder = () => {
   padding: 1.5rem;
   margin-bottom: 1rem;
   animation: slideDown 0.3s ease-out;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.form-header {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.form-header h3 {
+  color: var(--text-light, #e8f4f3);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 .form-group {
@@ -130,13 +178,14 @@ const getPlaceholder = () => {
   font-family: 'Work Sans', sans-serif;
   font-size: 1rem;
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(66, 153, 225, 0.8);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
 }
 
 .form-actions {
