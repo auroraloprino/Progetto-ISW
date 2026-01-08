@@ -152,18 +152,25 @@ const balanceColor = computed(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
   margin-top: 2rem;
+  padding: 0 1rem;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .card {
   background: var(--bg-card, rgba(107, 134, 132, 0.85));
   backdrop-filter: blur(10px);
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1.5rem;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   position: relative;
-  min-height: 550px;
+  min-height: 500px;
+  height: 100%;
   transition: all 0.3s ease;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .card:hover {
@@ -191,8 +198,8 @@ const balanceColor = computed(() => {
 .date-range-selector {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
   box-sizing: border-box;
 }
 
@@ -200,6 +207,10 @@ const balanceColor = computed(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.date-input-group:last-of-type {
   margin-bottom: 1rem;
 }
 
@@ -229,18 +240,18 @@ const balanceColor = computed(() => {
 
 .btn-calculate {
   width: 100%;
-  padding: 0.85rem;
+  padding: 0.75rem;
   background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
   border: none;
   border-radius: 6px;
   color: white;
   font-family: 'Work Sans', sans-serif;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 }
 
 .btn-calculate:hover {
@@ -251,11 +262,14 @@ const balanceColor = computed(() => {
 .summary {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1.25rem;
   flex: 1;
   overflow: hidden;
   box-sizing: border-box;
-  margin: 0 0.5rem 0.5rem 0.5rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .summary-row {
@@ -305,27 +319,121 @@ const balanceColor = computed(() => {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Desktop grande */
+@media (min-width: 1600px) {
+  .budget-container {
+    max-width: 1800px;
+  }
+}
+
+/* Desktop medio */
 @media (max-width: 1400px) {
   .budget-container {
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
   }
-}
-
-@media (max-width: 1100px) {
-  .budget-container {
-    grid-template-columns: repeat(2, 1fr);
+  
+  .card {
+    padding: 1.25rem;
   }
 }
 
-@media (max-width: 768px) {
+/* Desktop piccolo / Tablet landscape */
+@media (max-width: 1200px) {
   .budget-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    padding: 0 0.75rem;
+  }
+  
+  .card {
+    min-height: 450px;
+  }
+  
+  .card-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .budget-container {
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
   }
   
   .card {
     min-height: auto;
+  }
+}
+
+/* Tablet piccolo */
+@media (max-width: 768px) {
+  .budget-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 0 0.5rem;
+  }
+  
+  .card {
+    min-height: auto;
+    padding: 1.5rem;
+  }
+  
+  .date-range-selector {
+    padding: 1rem;
+  }
+  
+  .summary {
+    padding: 1rem;
+  }
+  
+  .summary-value {
+    font-size: 1.2rem;
+  }
+  
+  .balance-value {
+    font-size: 1.3rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .budget-container {
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+  
+  .card-title {
+    font-size: 1.4rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .date-input-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  
+  .date-input-group label {
+    min-width: auto;
+  }
+  
+  .summary-label {
+    font-size: 0.9rem;
+  }
+  
+  .summary-value {
+    font-size: 1.1rem;
+  }
+  
+  .balance-value {
+    font-size: 1.2rem;
   }
 }
 </style>
