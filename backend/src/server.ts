@@ -33,8 +33,15 @@ app.post('/api/users', async (req, res) => {
 async function startServer() {
   try {
     await dbService.connect();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+    });
+    process.on('SIGINT', async () => {
+      console.log('Closing server...');
+      await dbService.close();
+      server.close(() => {
+        process.exit(0);
+      });
     });
   } catch (error) {
     console.error('Failed to start server:', error);
