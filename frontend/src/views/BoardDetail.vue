@@ -130,7 +130,6 @@ const route = useRoute();
 const router = useRouter();
 
 const {
-  boards,
   boardsList,
   getBoardById,
   updateBoardTitle,
