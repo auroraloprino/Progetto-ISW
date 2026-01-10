@@ -10,6 +10,7 @@ build/
 .env
 .env.local
 .env.*.local
+*.env
 
 config/secrets.json
 *.key
@@ -54,3 +55,6 @@ docker-compose.prod.yml
 
 *.kubeconfig
 kustomization.yaml
+
+CLOUDINARY_SETUP.md
+cloudinary-production.ts
