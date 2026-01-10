@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { dbService } from './database';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,34 @@ app.get('/', (req, res) => {
   res.json({ message: 'Chronio Backend API' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await dbService.getDb().collection('users').find({}).toArray();
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
 });
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const result = await dbService.getDb().collection('users').insertOne(req.body);
+    res.json({ id: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+async function startServer() {
+  try {
+    await dbService.connect();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
