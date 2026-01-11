@@ -13,8 +13,8 @@
         <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
           <RouterLink 
             v-for="board in boardsList" 
-            :key="board.id"
-            :to="`/bacheche/${board.id}`"
+            :key="board.slug"
+            :to="`/bacheche/${board.slug}`"
             class="dropdown-item"
             @click="closeDropdown"
           >
@@ -130,8 +130,9 @@ const route = useRoute();
 const router = useRouter();
 
 const {
+  boards,
   boardsList,
-  getBoardById,
+  getBoardBySlug,
   updateBoardTitle,
   addColumn,
   deleteColumn,
@@ -151,14 +152,14 @@ const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-const boardId = computed(() => {
-  const id = route.params.id;
-  return typeof id === 'string' ? parseInt(id) : null;
+const boardSlug = computed(() => {
+  const slug = route.params.slug;
+  return typeof slug === 'string' ? slug : null;
 });
 
 const board = computed(() => {
-  if (boardId.value === null) return null;
-  return getBoardById(boardId.value);
+  if (boardSlug.value === null) return null;
+  return getBoardBySlug(boardSlug.value);
 });
 
 // Watch for board changes to update title
@@ -180,7 +181,7 @@ const toggleDropdown = () => {
 const startCloseTimer = () => {
   closeTimer = setTimeout(() => {
     dropdownOpen.value = false;
-  }, 300); // 300ms delay before closing
+  }, 300);
 };
 
 const cancelCloseTimer = () => {
@@ -209,44 +210,45 @@ const startEditTitle = () => {
 };
 
 const saveBoardTitle = () => {
-  if (boardId.value !== null) {
-    updateBoardTitle(boardId.value, boardTitle.value);
+  if (boardSlug.value !== null) {
+    const newSlug = updateBoardTitle(boardSlug.value, boardTitle.value);
+    if (newSlug && newSlug !== boardSlug.value) {
+      // Slug changed, redirect to new URL
+      router.replace(`/bacheche/${newSlug}`);
+    }
   }
   editingTitle.value = false;
 };
 
 // Column operations
 const handleAddColumn = () => {
-  if (boardId.value !== null) {
-    addColumn(boardId.value);
+  if (boardSlug.value !== null) {
+    addColumn(boardSlug.value);
   }
 };
 
 const startEditColumn = (column: any) => {
   editingColumn.value = column.id;
   columnTitles.value[column.id] = column.title;
-  nextTick(() => {
-    // Focus will be handled by the input appearing
-  });
 };
 
 const saveColumnTitle = (columnId: string) => {
-  if (boardId.value !== null) {
-    updateColumnTitle(boardId.value, columnId, columnTitles.value[columnId] || '');
+  if (boardSlug.value !== null) {
+    updateColumnTitle(boardSlug.value, columnId, columnTitles.value[columnId] || '');
   }
   editingColumn.value = null;
 };
 
 const handleDeleteColumn = (columnId: string) => {
-  if (boardId.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
-    deleteColumn(boardId.value, columnId);
+  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
+    deleteColumn(boardSlug.value, columnId);
   }
 };
 
 // Task operations
 const handleAddTask = (columnId: string) => {
-  if (boardId.value !== null) {
-    addTask(boardId.value, columnId);
+  if (boardSlug.value !== null) {
+    addTask(boardSlug.value, columnId);
   }
 };
 
@@ -256,15 +258,15 @@ const startEditTask = (task: any) => {
 };
 
 const saveTaskTitle = (columnId: string, taskId: string) => {
-  if (boardId.value !== null) {
-    updateTaskTitle(boardId.value, columnId, taskId, taskTitles.value[taskId] || '');
+  if (boardSlug.value !== null) {
+    updateTaskTitle(boardSlug.value, columnId, taskId, taskTitles.value[taskId] || '');
   }
   editingTask.value = null;
 };
 
 const handleDeleteTask = (columnId: string, taskId: string) => {
-  if (boardId.value !== null) {
-    deleteTask(boardId.value, columnId, taskId);
+  if (boardSlug.value !== null) {
+    deleteTask(boardSlug.value, columnId, taskId);
   }
 };
 

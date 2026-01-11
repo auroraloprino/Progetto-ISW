@@ -13,8 +13,8 @@
         <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
           <RouterLink 
             v-for="board in boardsList" 
-            :key="board.id"
-            :to="`/bacheche/${board.id}`"
+            :key="board.slug"
+            :to="`/bacheche/${board.slug}`"
             class="dropdown-item"
             @click="closeDropdown"
           >
@@ -40,20 +40,20 @@
     <div class="boards-container">
       <div 
         v-for="board in boards" 
-        :key="board.id"
+        :key="board.slug"
         class="board-card"
-        @click="openBoard(board.id)"
+        @click="openBoard(board.slug)"
       >
         <button 
           class="delete-btn"
-          @click.stop="handleDeleteBoard(board.id)"
+          @click.stop="handleDeleteBoard(board.slug)"
           title="Elimina bacheca"
         >
           <i class="fas fa-times"></i>
         </button>
         <input 
           v-if="board.editing"
-          v-model="boardTitles[board.id]"
+          v-model="boardTitles[board.slug]"
           @blur="saveBoardTitle(board)"
           @keyup.enter="saveBoardTitle(board)"
           @click.stop
@@ -88,7 +88,7 @@ const {
 } = useBoards();
 
 const dropdownOpen = ref(false);
-const boardTitles = reactive<Record<number, string>>({});
+const boardTitles = reactive<Record<string, string>>({});
 const titleInputs = ref<HTMLInputElement[]>([]);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -104,7 +104,7 @@ const toggleDropdown = () => {
 const startCloseTimer = () => {
   closeTimer = setTimeout(() => {
     dropdownOpen.value = false;
-  }, 300); // 300ms delay before closing
+  }, 300);
 };
 
 const cancelCloseTimer = () => {
@@ -126,7 +126,7 @@ const closeDropdown = () => {
 const handleCreateBoard = () => {
   const newBoard = createBoard();
   newBoard.editing = true;
-  boardTitles[newBoard.id] = newBoard.title;
+  boardTitles[newBoard.slug] = newBoard.title;
   
   nextTick(() => {
     const inputs = titleInputs.value;
@@ -140,7 +140,7 @@ const handleCreateBoard = () => {
 
 const startEditTitle = (board: Board) => {
   board.editing = true;
-  boardTitles[board.id] = board.title;
+  boardTitles[board.slug] = board.title;
   
   nextTick(() => {
     const input = titleInputs.value?.find(el => el);
@@ -150,19 +150,25 @@ const startEditTitle = (board: Board) => {
 };
 
 const saveBoardTitle = (board: Board) => {
-  const title = boardTitles[board.id] || board.title;
-  updateBoardTitle(board.id, title);
+  const title = boardTitles[board.slug] || board.title;
+  const newSlug = updateBoardTitle(board.slug, title);
   board.editing = false;
-};
-
-const handleDeleteBoard = (boardId: number) => {
-  if (confirm('Sei sicuro di voler eliminare questa bacheca?')) {
-    deleteBoard(boardId);
+  
+  // If slug changed, update the reactive object
+  if (newSlug && newSlug !== board.slug) {
+    delete boardTitles[board.slug];
+    boardTitles[newSlug] = title;
   }
 };
 
-const openBoard = (boardId: number) => {
-  router.push(`/bacheche/${boardId}`);
+const handleDeleteBoard = (slug: string) => {
+  if (confirm('Sei sicuro di voler eliminare questa bacheca?')) {
+    deleteBoard(slug);
+  }
+};
+
+const openBoard = (slug: string) => {
+  router.push(`/bacheche/${slug}`);
 };
 </script>
 

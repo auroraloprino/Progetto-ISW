@@ -4,22 +4,75 @@ import type { Board, Column, Task, BoardsState } from '../types/boards';
 const BOARDS_KEY = 'bacheche_data';
 
 const state = ref<BoardsState>({
-  boards: [],
-  nextId: 1
+  boards: []
 });
 
 export function useBoards() {
+  // Generate slug from title
+  const generateSlug = (title: string, existingSlugs: string[] = []): string => {
+    // Convert to lowercase and replace spaces/special chars with hyphens
+    let slug = title
+      .toLowerCase()
+      .trim()
+      .normalize('NFD') // Decompose accented characters
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+
+    // If empty, use default
+    if (!slug) {
+      slug = 'bacheca';
+    }
+
+    // Check if slug exists and add number suffix if needed
+    let finalSlug = slug;
+    let counter = 1;
+    while (existingSlugs.includes(finalSlug)) {
+      finalSlug = `${slug}-${counter}`;
+      counter++;
+    }
+
+    return finalSlug;
+  };
+
   // Load from localStorage
   const loadBoards = () => {
     try {
       const saved = localStorage.getItem(BOARDS_KEY);
       if (saved) {
         const data = JSON.parse(saved);
+        
+        // Migration: convert old numeric IDs to slugs if needed
+        if (data.boards && data.boards.length > 0) {
+          const firstBoard = data.boards[0];
+          
+          // Check if boards still use old format (id instead of slug)
+          if ('id' in firstBoard && !('slug' in firstBoard)) {
+            console.log('Migrating old board format to slug-based...');
+            data.boards = data.boards.map((board: any) => {
+              const slug = generateSlug(board.title);
+              return {
+                slug,
+                title: board.title,
+                editing: board.editing || false,
+                columns: (board.columns || []).map((col: any) => ({
+                  ...col,
+                  boardSlug: slug
+                }))
+              };
+            });
+            // Save migrated data
+            localStorage.setItem(BOARDS_KEY, JSON.stringify(data));
+          }
+        }
+        
         state.value = data;
       }
     } catch (error) {
       console.error('Error loading boards:', error);
-      state.value = { boards: [], nextId: 1 };
+      state.value = { boards: [] };
     }
   };
 
@@ -32,15 +85,21 @@ export function useBoards() {
     }
   };
 
-  // Generate unique ID
+  // Generate unique ID for columns/tasks
   const generateId = (): string => {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
+  // Get all existing slugs
+  const getExistingSlugs = (): string[] => {
+    return state.value.boards.map(b => b.slug);
+  };
+
   // Board operations
   const createBoard = (title: string = 'Nuova Bacheca'): Board => {
+    const slug = generateSlug(title, getExistingSlugs());
     const newBoard: Board = {
-      id: state.value.nextId++,
+      slug,
       title,
       editing: false,
       columns: []
@@ -50,8 +109,8 @@ export function useBoards() {
     return newBoard;
   };
 
-  const deleteBoard = (boardId: number): boolean => {
-    const index = state.value.boards.findIndex(b => b.id === boardId);
+  const deleteBoard = (slug: string): boolean => {
+    const index = state.value.boards.findIndex(b => b.slug === slug);
     if (index !== -1) {
       state.value.boards.splice(index, 1);
       saveBoards();
@@ -60,29 +119,45 @@ export function useBoards() {
     return false;
   };
 
-  const updateBoardTitle = (boardId: number, title: string): boolean => {
-    const board = state.value.boards.find(b => b.id === boardId);
-    if (board) {
-      board.title = title.trim() || 'Bacheca Senza Nome';
-      saveBoards();
-      return true;
-    }
-    return false;
+  const updateBoardTitle = (oldSlug: string, newTitle: string): string | null => {
+    const board = state.value.boards.find(b => b.slug === oldSlug);
+    if (!board) return null;
+
+    const trimmedTitle = newTitle.trim() || 'Bacheca Senza Nome';
+    
+    // Generate new slug
+    const existingSlugs = getExistingSlugs().filter(s => s !== oldSlug);
+    const newSlug = generateSlug(trimmedTitle, existingSlugs);
+    
+    // Update board
+    board.title = trimmedTitle;
+    board.slug = newSlug;
+    
+    // Update all columns and tasks with new boardSlug
+    board.columns.forEach(column => {
+      column.boardSlug = newSlug;
+      column.tasks.forEach(task => {
+        task.boardSlug = newSlug;
+      });
+    });
+    
+    saveBoards();
+    return newSlug;
   };
 
-  const getBoardById = (boardId: number): Board | undefined => {
-    return state.value.boards.find(b => b.id === boardId);
+  const getBoardBySlug = (slug: string): Board | undefined => {
+    return state.value.boards.find(b => b.slug === slug);
   };
 
   // Column operations
-  const addColumn = (boardId: number, title: string = 'TITOLO'): Column | null => {
-    const board = getBoardById(boardId);
+  const addColumn = (boardSlug: string, title: string = 'TITOLO'): Column | null => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return null;
 
     const newColumn: Column = {
       id: generateId(),
       title,
-      boardId,
+      boardSlug,
       order: board.columns.length,
       tasks: []
     };
@@ -92,8 +167,8 @@ export function useBoards() {
     return newColumn;
   };
 
-  const deleteColumn = (boardId: number, columnId: string): boolean => {
-    const board = getBoardById(boardId);
+  const deleteColumn = (boardSlug: string, columnId: string): boolean => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return false;
 
     const index = board.columns.findIndex(c => c.id === columnId);
@@ -107,8 +182,8 @@ export function useBoards() {
     return false;
   };
 
-  const updateColumnTitle = (boardId: number, columnId: string, title: string): boolean => {
-    const board = getBoardById(boardId);
+  const updateColumnTitle = (boardSlug: string, columnId: string, title: string): boolean => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return false;
 
     const column = board.columns.find(c => c.id === columnId);
@@ -121,8 +196,8 @@ export function useBoards() {
   };
 
   // Task operations
-  const addTask = (boardId: number, columnId: string, title: string = 'TASK'): Task | null => {
-    const board = getBoardById(boardId);
+  const addTask = (boardSlug: string, columnId: string, title: string = 'TASK'): Task | null => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return null;
 
     const column = board.columns.find(c => c.id === columnId);
@@ -132,7 +207,7 @@ export function useBoards() {
       id: generateId(),
       title,
       columnId,
-      boardId,
+      boardSlug,
       order: column.tasks.length
     };
 
@@ -141,8 +216,8 @@ export function useBoards() {
     return newTask;
   };
 
-  const deleteTask = (boardId: number, columnId: string, taskId: string): boolean => {
-    const board = getBoardById(boardId);
+  const deleteTask = (boardSlug: string, columnId: string, taskId: string): boolean => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return false;
 
     const column = board.columns.find(c => c.id === columnId);
@@ -159,8 +234,8 @@ export function useBoards() {
     return false;
   };
 
-  const updateTaskTitle = (boardId: number, columnId: string, taskId: string, title: string): boolean => {
-    const board = getBoardById(boardId);
+  const updateTaskTitle = (boardSlug: string, columnId: string, taskId: string, title: string): boolean => {
+    const board = getBoardBySlug(boardSlug);
     if (!board) return false;
 
     const column = board.columns.find(c => c.id === columnId);
@@ -178,7 +253,7 @@ export function useBoards() {
   // Computed
   const boards = computed(() => state.value.boards);
   const boardsList = computed(() => 
-    state.value.boards.map(b => ({ id: b.id, title: b.title }))
+    state.value.boards.map(b => ({ slug: b.slug, title: b.title }))
   );
 
   // Initialize
@@ -193,7 +268,7 @@ export function useBoards() {
     createBoard,
     deleteBoard,
     updateBoardTitle,
-    getBoardById,
+    getBoardBySlug,
     
     // Column operations
     addColumn,

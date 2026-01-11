@@ -24,7 +24,7 @@ const routes = [
     meta: { auth: true }
   },
   {
-    path: '/bacheche/:id',
+    path: '/bacheche/:slug',
     component: BoardDetail,
     meta: { auth: true }
   },

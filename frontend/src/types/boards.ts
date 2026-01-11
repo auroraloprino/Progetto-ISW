@@ -2,20 +2,20 @@ export interface Task {
   id: string;
   title: string;
   columnId: string;
-  boardId: number;
+  boardSlug: string;
   order: number;
 }
 
 export interface Column {
   id: string;
   title: string;
-  boardId: number;
+  boardSlug: string;
   order: number;
   tasks: Task[];
 }
 
 export interface Board {
-  id: number;
+  slug: string;
   title: string;
   editing?: boolean;
   columns: Column[];
@@ -23,5 +23,4 @@ export interface Board {
 
 export interface BoardsState {
   boards: Board[];
-  nextId: number;
 }
