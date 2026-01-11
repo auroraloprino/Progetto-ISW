@@ -250,6 +250,37 @@ export function useBoards() {
     return false;
   };
 
+  const moveTask = (boardSlug: string, taskId: string, fromColumnId: string, toColumnId: string, newOrder: number): boolean => {
+    const board = getBoardBySlug(boardSlug);
+    if (!board) return false;
+
+    const fromColumn = board.columns.find(c => c.id === fromColumnId);
+    const toColumn = board.columns.find(c => c.id === toColumnId);
+    if (!fromColumn || !toColumn) return false;
+
+    const taskIndex = fromColumn.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return false;
+
+    const task = fromColumn.tasks[taskIndex];
+    
+    // Remove from source column
+    fromColumn.tasks.splice(taskIndex, 1);
+    
+    // Update task's columnId
+    task.columnId = toColumnId;
+    task.boardSlug = boardSlug;
+    
+    // Insert into target column at specified position
+    toColumn.tasks.splice(newOrder, 0, task);
+    
+    // Reorder tasks in both columns
+    fromColumn.tasks.forEach((t, idx) => t.order = idx);
+    toColumn.tasks.forEach((t, idx) => t.order = idx);
+    
+    saveBoards();
+    return true;
+  };
+
   // Computed
   const boards = computed(() => state.value.boards);
   const boardsList = computed(() => 
@@ -279,6 +310,7 @@ export function useBoards() {
     addTask,
     deleteTask,
     updateTaskTitle,
+    moveTask,
     
     // Utils
     saveBoards,
