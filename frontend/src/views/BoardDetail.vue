@@ -5,12 +5,12 @@
       <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
       
       <!-- Dropdown Bacheche -->
-      <div class="dropdown" @click="toggleDropdown" @mouseleave="closeDropdown">
-        <a class="dropdown-toggle active">
+      <div class="dropdown" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
+        <a class="dropdown-toggle active" @click.stop="toggleDropdown">
           <i class="fas fa-clipboard"></i> Bacheche
           <i class="fas fa-chevron-down" :class="{ 'rotated': dropdownOpen }"></i>
         </a>
-        <div class="dropdown-menu" v-show="dropdownOpen">
+        <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
           <RouterLink 
             v-for="board in boardsList" 
             :key="board.id"
@@ -48,7 +48,7 @@
       <h1 v-else @dblclick="startEditTitle" class="board-title-large">{{ board.title }}</h1>
       
       <button class="btn-add-column" @click="handleAddColumn">
-        <i class="fas fa-plus"></i> AGGIUNGI BACHECA
+        <i class="fas fa-plus"></i> AGGIUNGI TASK
       </button>
     </div>
 
@@ -149,6 +149,7 @@ const boardTitle = ref('');
 const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
+let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const boardId = computed(() => {
   const id = route.params.id;
@@ -170,10 +171,31 @@ watch(board, (newBoard) => {
 // Dropdown handlers
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+};
+
+const startCloseTimer = () => {
+  closeTimer = setTimeout(() => {
+    dropdownOpen.value = false;
+  }, 300); // 300ms delay before closing
+};
+
+const cancelCloseTimer = () => {
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
 };
 
 const closeDropdown = () => {
   dropdownOpen.value = false;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
 };
 
 // Board title editing
