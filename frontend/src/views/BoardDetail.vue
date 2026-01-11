@@ -5,16 +5,16 @@
       <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
       
       <!-- Dropdown Bacheche -->
-      <div class="dropdown" @click="toggleDropdown" @mouseleave="closeDropdown">
-        <a class="dropdown-toggle active">
+      <div class="dropdown" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
+        <a class="dropdown-toggle active" @click.stop="toggleDropdown">
           <i class="fas fa-clipboard"></i> Bacheche
           <i class="fas fa-chevron-down" :class="{ 'rotated': dropdownOpen }"></i>
         </a>
-        <div class="dropdown-menu" v-show="dropdownOpen">
+        <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
           <RouterLink 
             v-for="board in boardsList" 
-            :key="board.id"
-            :to="`/bacheche/${board.id}`"
+            :key="board.slug"
+            :to="`/bacheche/${board.slug}`"
             class="dropdown-item"
             @click="closeDropdown"
           >
@@ -35,20 +35,20 @@
   </nav>
 
   <div class="page-content" v-if="board">
+    <h1 v-if="!editingTitle" @dblclick="startEditTitle" class="page-title">{{ board.title }}</h1>
+    <input 
+      v-if="editingTitle"
+      v-model="boardTitle"
+      @blur="saveBoardTitle"
+      @keyup.enter="saveBoardTitle"
+      class="page-title-input"
+      ref="titleInputRef"
+      @click.stop
+    />
+    
     <div class="board-header">
-      <input 
-        v-if="editingTitle"
-        v-model="boardTitle"
-        @blur="saveBoardTitle"
-        @keyup.enter="saveBoardTitle"
-        class="board-title-input-large"
-        ref="titleInputRef"
-        @click.stop
-      />
-      <h1 v-else @dblclick="startEditTitle" class="board-title-large">{{ board.title }}</h1>
-      
-      <button class="btn-add-column" @click="handleAddColumn">
-        <i class="fas fa-plus"></i> AGGIUNGI BACHECA
+      <button class="btn-back-to-boards" @click="goBackToBacheche">
+        <i class="fas fa-arrow-left"></i> Torna alle Bacheche
       </button>
     </div>
 
@@ -80,12 +80,25 @@
           </button>
         </div>
 
-        <div class="tasks-container">
+        <div class="tasks-container"
+             @dragover.prevent
+             @drop="handleDrop($event, column.id)">
           <div 
-            v-for="task in column.tasks" 
+            v-for="(task, index) in column.tasks" 
             :key="task.id"
-            class="task-card"
+            :class="['task-card', { completed: task.completed }]"
+            draggable="true"
+            @dragstart="handleDragStart($event, task, column.id)"
+            @dragend="handleDragEnd"
           >
+            <button 
+              class="task-checkbox"
+              @click.stop="toggleTaskComplete(column.id, task.id)"
+              :class="{ checked: task.completed }"
+            >
+              <i v-if="task.completed" class="fas fa-check"></i>
+            </button>
+            
             <input 
               v-if="editingTask === task.id"
               v-model="taskTitles[task.id]"
@@ -112,6 +125,11 @@
           </button>
         </div>
       </div>
+      
+      <div class="add-column-card" @click="handleAddColumn">
+        <i class="fas fa-plus"></i>
+        <span>AGGIUNGI SCHEDA</span>
+      </div>
     </div>
   </div>
 
@@ -131,14 +149,15 @@ const router = useRouter();
 
 const {
   boardsList,
-  getBoardById,
+  getBoardBySlug,
   updateBoardTitle,
   addColumn,
   deleteColumn,
   updateColumnTitle,
   addTask,
   deleteTask,
-  updateTaskTitle
+  updateTaskTitle,
+  moveTask
 } = useBoards();
 
 const dropdownOpen = ref(false);
@@ -149,15 +168,17 @@ const boardTitle = ref('');
 const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
+let closeTimer: ReturnType<typeof setTimeout> | null = null;
+let draggedTask: { task: any; sourceColumnId: string } | null = null;
 
-const boardId = computed(() => {
-  const id = route.params.id;
-  return typeof id === 'string' ? parseInt(id) : null;
+const boardSlug = computed(() => {
+  const slug = route.params.slug;
+  return typeof slug === 'string' ? slug : null;
 });
 
 const board = computed(() => {
-  if (boardId.value === null) return null;
-  return getBoardById(boardId.value);
+  if (boardSlug.value === null) return null;
+  return getBoardBySlug(boardSlug.value);
 });
 
 // Watch for board changes to update title
@@ -170,10 +191,31 @@ watch(board, (newBoard) => {
 // Dropdown handlers
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+};
+
+const startCloseTimer = () => {
+  closeTimer = setTimeout(() => {
+    dropdownOpen.value = false;
+  }, 300);
+};
+
+const cancelCloseTimer = () => {
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
 };
 
 const closeDropdown = () => {
   dropdownOpen.value = false;
+  if (closeTimer) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
 };
 
 // Board title editing
@@ -187,44 +229,50 @@ const startEditTitle = () => {
 };
 
 const saveBoardTitle = () => {
-  if (boardId.value !== null) {
-    updateBoardTitle(boardId.value, boardTitle.value);
+  if (boardSlug.value !== null) {
+    const newSlug = updateBoardTitle(boardSlug.value, boardTitle.value);
+    if (newSlug && newSlug !== boardSlug.value) {
+      // Slug changed, redirect to new URL
+      router.replace(`/bacheche/${newSlug}`);
+    }
   }
   editingTitle.value = false;
 };
 
+// Navigation
+const goBackToBacheche = () => {
+  router.push('/bacheche');
+};
+
 // Column operations
 const handleAddColumn = () => {
-  if (boardId.value !== null) {
-    addColumn(boardId.value);
+  if (boardSlug.value !== null) {
+    addColumn(boardSlug.value);
   }
 };
 
 const startEditColumn = (column: any) => {
   editingColumn.value = column.id;
   columnTitles.value[column.id] = column.title;
-  nextTick(() => {
-    // Focus will be handled by the input appearing
-  });
 };
 
 const saveColumnTitle = (columnId: string) => {
-  if (boardId.value !== null) {
-    updateColumnTitle(boardId.value, columnId, columnTitles.value[columnId] || '');
+  if (boardSlug.value !== null) {
+    updateColumnTitle(boardSlug.value, columnId, columnTitles.value[columnId] || '');
   }
   editingColumn.value = null;
 };
 
 const handleDeleteColumn = (columnId: string) => {
-  if (boardId.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
-    deleteColumn(boardId.value, columnId);
+  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
+    deleteColumn(boardSlug.value, columnId);
   }
 };
 
 // Task operations
 const handleAddTask = (columnId: string) => {
-  if (boardId.value !== null) {
-    addTask(boardId.value, columnId);
+  if (boardSlug.value !== null) {
+    addTask(boardSlug.value, columnId);
   }
 };
 
@@ -234,16 +282,62 @@ const startEditTask = (task: any) => {
 };
 
 const saveTaskTitle = (columnId: string, taskId: string) => {
-  if (boardId.value !== null) {
-    updateTaskTitle(boardId.value, columnId, taskId, taskTitles.value[taskId] || '');
+  if (boardSlug.value !== null) {
+    updateTaskTitle(boardSlug.value, columnId, taskId, taskTitles.value[taskId] || '');
   }
   editingTask.value = null;
 };
 
 const handleDeleteTask = (columnId: string, taskId: string) => {
-  if (boardId.value !== null) {
-    deleteTask(boardId.value, columnId, taskId);
+  if (boardSlug.value !== null) {
+    deleteTask(boardSlug.value, columnId, taskId);
   }
+};
+
+const toggleTaskComplete = (columnId: string, taskId: string) => {
+  if (boardSlug.value !== null) {
+    const board = getBoardBySlug(boardSlug.value);
+    if (board) {
+      const column = board.columns.find(c => c.id === columnId);
+      if (column) {
+        const task = column.tasks.find(t => t.id === taskId);
+        if (task) {
+          task.completed = !task.completed;
+        }
+      }
+    }
+  }
+};
+
+// Drag and drop handlers
+const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
+  draggedTask = { task, sourceColumnId: columnId };
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+  }
+};
+
+const handleDragEnd = () => {
+  draggedTask = null;
+};
+
+const handleDrop = (event: DragEvent, targetColumnId: string) => {
+  event.preventDefault();
+  
+  if (!draggedTask || !boardSlug.value) return;
+  
+  const { task, sourceColumnId } = draggedTask;
+  
+  if (sourceColumnId !== targetColumnId) {
+    // Find target position (append to end)
+    const board = getBoardBySlug(boardSlug.value);
+    const targetColumn = board?.columns.find(c => c.id === targetColumnId);
+    const newOrder = targetColumn?.tasks.length || 0;
+    
+    moveTask(boardSlug.value, task.id, sourceColumnId, targetColumnId, newOrder);
+  }
+  
+  draggedTask = null;
 };
 
 onMounted(() => {
@@ -326,9 +420,42 @@ onMounted(() => {
 
 /* Page layout */
 .page-content {
-  padding: 2rem;
-  margin-top: 80px;
-  min-height: calc(100vh - 80px);
+  padding: 0.5rem 2rem !important;
+  margin-top: 100px !important;
+  height: calc(100vh - 100px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: center !important;
+  overflow-y: auto !important;
+}
+
+.page-title {
+  margin-bottom: 1rem !important;
+  margin-top: 0 !important;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+
+.page-title:hover {
+  opacity: 0.8;
+}
+
+.page-title-input {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  background: white;
+  border: 2px solid var(--primary-color);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  outline: none;
+  text-align: center;
+  margin-bottom: 1rem;
+  min-width: 300px;
 }
 
 /* Board header */
@@ -338,30 +465,30 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 2rem;
   gap: 1rem;
+  width: 100%;
+  max-width: 1200px;
 }
 
-.board-title-large {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary-color);
-  margin: 0;
-  cursor: pointer;
-}
-
-.board-title-large:hover {
-  opacity: 0.8;
-}
-
-.board-title-input-large {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--primary-color);
-  background: white;
+.btn-back-to-boards {
+  background: rgba(13, 72, 83, 0.8);
+  color: white;
   border: 2px solid var(--primary-color);
   border-radius: 8px;
-  padding: 0.5rem 1rem;
-  outline: none;
-  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-back-to-boards:hover {
+  background: rgba(13, 72, 83, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
 }
 
 .btn-add-column {
@@ -390,17 +517,19 @@ onMounted(() => {
 /* Columns layout */
 .columns-container {
   display: flex;
+  flex-wrap: wrap;
   gap: 1.5rem;
-  overflow-x: auto;
-  padding-bottom: 1rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
 }
 
 .column {
   background: rgba(13, 72, 83, 0.6);
   border-radius: 12px;
   padding: 1.25rem;
-  min-width: 280px;
-  max-width: 320px;
+  width: 280px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -475,24 +604,88 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
+  min-height: 100px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.tasks-container .task-card {
+  order: 1;
+}
+
+.tasks-container .task-card.completed {
+  order: 2;
+}
+
+.tasks-container .btn-add-task {
+  order: 0;
+}
+
+.tasks-container:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .task-card {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   padding: 0.875rem 1rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s ease;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
   position: relative;
+  border: 1px solid rgba(13, 72, 83, 0.2);
+  box-shadow: 0 1px 3px rgba(13, 72, 83, 0.1);
+  cursor: grab;
+}
+
+.task-card:active {
+  cursor: grabbing;
 }
 
 .task-card:hover {
-  background: white;
+  background: rgba(255, 255, 255, 0.5);
   transform: translateX(2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(13, 72, 83, 0.15);
+}
+
+/* Dark mode */
+[data-theme="dark"] .task-card {
+  background: rgba(60, 60, 60, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .task-card:hover {
+  background: rgba(60, 60, 60, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.task-card.completed {
+  opacity: 0.6;
+  transform: translateY(2px);
+}
+
+.task-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--primary-color);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.task-checkbox.checked {
+  background: var(--primary-color);
+  color: white;
 }
 
 .task-text {
@@ -503,6 +696,11 @@ onMounted(() => {
   padding: 0.25rem;
   border-radius: 4px;
   transition: background 0.2s ease;
+}
+
+.task-card.completed .task-text {
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 
 .task-text:hover {
@@ -568,6 +766,40 @@ onMounted(() => {
   border-color: rgba(255, 255, 255, 0.8);
 }
 
+.add-column-card {
+  background: rgba(13, 72, 83, 0.1);
+  border: 2px dashed var(--primary-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  width: 280px;
+  min-height: 200px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.add-column-card:hover {
+  background: rgba(13, 72, 83, 0.15);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.add-column-card i {
+  font-size: 2rem;
+  color: var(--primary-color);
+}
+
+.add-column-card span {
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
 /* Back button */
 .btn-back {
   display: inline-block;
@@ -591,18 +823,34 @@ onMounted(() => {
   .board-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
+  }
+
+  .btn-back-to-boards {
+    align-self: flex-start;
+  }
+
+  .board-title-large {
+    text-align: center;
+    order: 2;
+  }
+
+  .board-title-input-large {
+    order: 2;
   }
 
   .btn-add-column {
+    order: 3;
     width: 100%;
   }
 
   .columns-container {
-    flex-direction: column;
+    justify-content: center;
   }
 
   .column {
-    max-width: 100%;
+    width: 100%;
+    max-width: 400px;
   }
 }
 </style>

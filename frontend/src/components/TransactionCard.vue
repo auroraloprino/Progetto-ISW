@@ -84,11 +84,10 @@ const getEmptyMessage = () => {
 
 <style scoped>
 .card {
-  background: var(--bg-card, rgba(107, 134, 132, 0.85));
-  backdrop-filter: blur(10px);
-  border-radius: var(--border-radius, 12px);
-  padding: 2rem;
-  box-shadow: var(--shadow, 0 10px 40px rgba(0, 0, 0, 0.2));
+  background: rgba(13, 72, 83, 0.69);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(13, 72, 83, 0.08);
   position: relative;
   min-height: 400px;
   transition: all 0.3s ease;
@@ -97,21 +96,20 @@ const getEmptyMessage = () => {
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
-  background: var(--bg-card-hover, rgba(107, 134, 132, 0.95));
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(13, 72, 83, 0.2);
 }
 
 .card-add-btn {
   position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
+  top: 1rem;
+  right: 1rem;
   width: 50px;
   height: 50px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.4);
-  color: var(--text-light, #e8f4f3);
+  color: white;
   font-size: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -128,12 +126,14 @@ const getEmptyMessage = () => {
 }
 
 .card-title {
-  font-family: 'Playfair Display', serif;
+  color: white;
   font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text-light, #e8f4f3);
   margin-bottom: 1.5rem;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  padding: 1.5rem;
+  background: rgba(235, 235, 235, 0.31);
+  border-radius: 12px;
 }
 
 @keyframes slideUp {

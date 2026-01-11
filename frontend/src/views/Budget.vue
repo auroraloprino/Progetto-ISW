@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBudget } from '../composables/useBudget';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
@@ -61,14 +61,14 @@ const handleUpdateTransaction = (
   updateTransaction(id, description, amount, date);
 };
 
-const handleCalculate = () => {
+watch([startDate, endDate], () => {
   if (startDate.value && endDate.value) {
     const start = new Date(startDate.value);
     const end = new Date(endDate.value);
     end.setHours(23, 59, 59, 999);
     currentDateRange.value = { startDate: start, endDate: end };
   }
-};
+});
 
 const formatCurrency = (amount: number): string => {
   return `€${amount.toFixed(2)}`;
@@ -124,13 +124,12 @@ const balanceColor = computed(() => {
           <div class="date-range-selector">
             <div class="date-input-group">
               <label>Da:</label>
-              <input v-model="startDate" type="date" @change="handleCalculate" />
+              <input v-model="startDate" type="date" />
             </div>
             <div class="date-input-group">
               <label>A:</label>
-              <input v-model="endDate" type="date" @change="handleCalculate" />
+              <input v-model="endDate" type="date" />
             </div>
-            <button class="btn-calculate" @click="handleCalculate">Calcola</button>
           </div>
 
           <div class="summary">
@@ -171,11 +170,10 @@ const balanceColor = computed(() => {
 }
 
 .card {
-  background: var(--bg-card, rgba(107, 134, 132, 0.85));
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  background: rgba(13, 72, 83, 0.69);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(13, 72, 83, 0.08);
   position: relative;
   min-height: 500px;
   height: 100%;
@@ -186,25 +184,26 @@ const balanceColor = computed(() => {
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(13, 72, 83, 0.2);
 }
 
 .card-title {
-  font-family: 'Playfair Display', serif;
+  color: white;
   font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text-light, #e8f4f3);
   margin-bottom: 1.5rem;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+  text-align: center;
 }
 
 .budget-summary {
+  background: rgba(235, 235, 235, 0.31);
+  border-radius: 12px;
+  padding: 1.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 0;
 }
 
 .date-range-selector {
@@ -223,11 +222,11 @@ const balanceColor = computed(() => {
 }
 
 .date-input-group:last-of-type {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .date-input-group label {
-  color: var(--text-light, #e8f4f3);
+  color: white;
   font-weight: 600;
   min-width: 40px;
 }
@@ -250,26 +249,7 @@ const balanceColor = computed(() => {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
-.btn-calculate {
-  width: 100%;
-  padding: 0.75rem;
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-family: 'Work Sans', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
 
-.btn-calculate:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(66, 153, 225, 0.4);
-}
 
 .summary {
   background: rgba(255, 255, 255, 0.15);
@@ -303,7 +283,7 @@ const balanceColor = computed(() => {
 }
 
 .summary-label {
-  color: var(--text-light, #e8f4f3);
+  color: white;
   font-size: 1rem;
   font-weight: 600;
 }
@@ -311,24 +291,21 @@ const balanceColor = computed(() => {
 .summary-value {
   font-size: 1.3rem;
   font-weight: 700;
-  font-family: 'Playfair Display', serif;
   word-wrap: break-word;
   text-align: right;
 }
 
 .income-value {
-  color: var(--accent-income, #48bb78);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 .expense-value {
-  color: var(--accent-expense, #f56565);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 .balance-value {
   font-size: 1.5rem;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 /* Desktop grande */

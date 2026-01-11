@@ -351,7 +351,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
@@ -1008,19 +1008,56 @@ watch(() => eventForm.value.allDay, (newVal) => {
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
-    if (showEventModal.value) closeEventModal()
-    if (showTagModal.value) closeTagModal()
-    if (showConfirmModal.value) closeConfirmModal()
+    if (showEventModal.value) {
+      closeEventModal()
+      event.preventDefault()
+    }
+    if (showTagModal.value) {
+      closeTagModal()
+      event.preventDefault()
+    }
+    if (showConfirmModal.value) {
+      closeConfirmModal()
+      event.preventDefault()
+    }
   }
-  if (event.key === 'Enter') {
-    if (showEventModal.value) saveEvent()
-    if (showTagModal.value) saveTag()
-    if (showConfirmModal.value) confirmAction()
+  if (event.key === 'Enter' && !event.shiftKey) {
+    if (showEventModal.value) {
+      saveEvent()
+      event.preventDefault()
+    }
+    if (showTagModal.value) {
+      saveTag()
+      event.preventDefault()
+    }
+    if (showConfirmModal.value) {
+      confirmAction()
+      event.preventDefault()
+    }
+  }
+}
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (showEventModal.value && target.closest('.modal') && !target.closest('.modal-content')) {
+    closeEventModal()
+  }
+  if (showTagModal.value && target.closest('.modal') && !target.closest('.modal-content')) {
+    closeTagModal()
+  }
+  if (showConfirmModal.value && target.closest('.modal') && !target.closest('.modal-content')) {
+    closeConfirmModal()
   }
 }
 
 onMounted(() => {
   loadData()
   document.addEventListener('keydown', handleKeydown)
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
