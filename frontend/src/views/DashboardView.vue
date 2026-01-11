@@ -6,6 +6,9 @@
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      
+      <!-- Notification Bell -->
+      <NotificationBell />
     </div>
   </nav>
 
@@ -45,6 +48,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import NotificationBell from '../components/NotificationBell.vue'
 import { currentUser, logout, updateUser, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'

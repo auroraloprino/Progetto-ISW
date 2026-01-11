@@ -5,7 +5,10 @@
         <RouterLink to="/calendario" class="active"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
         <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
         <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink> 
+        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+        
+        <!-- Notification Bell -->
+        <NotificationBell />
       </div>
     </nav>
     
@@ -192,7 +195,7 @@
               >
                 <button 
                   class="event-delete-btn"
-                  @click.stop="deleteEventFromSidebar(event.dateKey, event.id)"
+                  @click.stop="deleteEventFromSidebar(event.id)"
                   title="Elimina evento"
                 >
                   <i class="fas fa-times"></i>
@@ -220,7 +223,7 @@
               >
                 <button 
                   class="event-delete-btn"
-                  @click.stop="deleteEventFromSidebar(event.dateKey, event.id)"
+                  @click.stop="deleteEventFromSidebar(event.id)"
                   title="Elimina evento"
                 >
                   <i class="fas fa-times"></i>
@@ -352,6 +355,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import NotificationBell from './NotificationBell.vue'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
@@ -527,7 +531,10 @@ const todayEvents = computed(() => {
   const addedEventIds = new Set()
   
   for (const dateKey in events.value) {
-    events.value[dateKey].forEach(event => {
+    const dayEvents = events.value[dateKey];
+    if (!dayEvents) continue;
+    
+    dayEvents.forEach(event => {
       if (addedEventIds.has(event.id)) return
       
       const eventStart = new Date(event.datetime)
@@ -563,7 +570,10 @@ const weekEvents = computed(() => {
     const targetDateKey = `${targetDate.getFullYear()}-${targetDate.getMonth() + 1}-${targetDate.getDate()}`
     
     for (const dateKey in events.value) {
-      events.value[dateKey].forEach(event => {
+      const dayEvents = events.value[dateKey];
+      if (!dayEvents) continue;
+      
+      dayEvents.forEach(event => {
         if (addedEventIds.has(`${event.id}-${targetDateKey}`)) return
         
         const eventStart = new Date(event.datetime)
@@ -576,13 +586,16 @@ const weekEvents = computed(() => {
           if (!event.tag || (tag && tag.visible)) {
             const eventTime = event.allDay ? 'Tutto il giorno' : eventStart.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
             
+            const monthIndex = targetDate.getMonth();
+            const monthName = months[monthIndex] || 'Gen';
+            
             weekEventsList.push({
               id: event.id,
               title: getEventDisplayTitle(event, targetDateKey),
               time: eventTime,
               type: event.type,
               date: targetDate.getDate(),
-              month: months[targetDate.getMonth()].slice(0, 3),
+              month: monthName.slice(0, 3),
               dateKey: targetDateKey,
               tag: event.tag
             })
@@ -687,13 +700,6 @@ const nextWeek = () => {
   displayYear.value = currentDate.getFullYear()
 }
 
-const getWeekNumber = (): number => {
-  const date = new Date(displayYear.value, displayMonth.value, selectedDay.value)
-  const start = new Date(date.getFullYear(), 0, 1)
-  const days = Math.floor((date.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
-  return Math.ceil((days + start.getDay() + 1) / 7)
-}
-
 const toggleTagsVisibility = () => {
   tagsVisible.value = !tagsVisible.value
 }
@@ -750,7 +756,10 @@ const saveTag = () => {
 const deleteTag = (tagId: number) => {
   showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', () => {
     for (const dateKey in events.value) {
-      events.value[dateKey] = events.value[dateKey].filter(event => event.tag !== tagId)
+      const dayEvents = events.value[dateKey];
+      if (!dayEvents) continue;
+      
+      events.value[dateKey] = dayEvents.filter(event => event.tag !== tagId)
       if (events.value[dateKey].length === 0) {
         delete events.value[dateKey]
       }
@@ -832,7 +841,10 @@ const saveEvent = () => {
   
   if (editingEventId.value) {
     for (const dateKey in events.value) {
-      events.value[dateKey] = events.value[dateKey].filter(e => e.id !== editingEventId.value)
+      const dayEvents = events.value[dateKey];
+      if (!dayEvents) continue;
+      
+      events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
       if (events.value[dateKey].length === 0) {
         delete events.value[dateKey]
       }
@@ -861,7 +873,10 @@ const deleteEvent = () => {
   showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
     if (editingEventId.value) {
       for (const dateKey in events.value) {
-        events.value[dateKey] = events.value[dateKey].filter(e => e.id !== editingEventId.value)
+        const dayEvents = events.value[dateKey];
+        if (!dayEvents) continue;
+        
+        events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
         if (events.value[dateKey].length === 0) {
           delete events.value[dateKey]
         }
@@ -934,10 +949,13 @@ const getAllDayEvents = (): Event[] => {
   })
 }
 
-const deleteEventFromSidebar = (dateKey: string, eventId: number) => {
+const deleteEventFromSidebar = (eventId: number) => {
   showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
     for (const key in events.value) {
-      events.value[key] = events.value[key].filter(e => e.id !== eventId)
+      const dayEvents = events.value[key];
+      if (!dayEvents) continue;
+      
+      events.value[key] = dayEvents.filter(e => e.id !== eventId)
       if (events.value[key].length === 0) {
         delete events.value[key]
       }
