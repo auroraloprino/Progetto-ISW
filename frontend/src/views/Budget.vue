@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBudget } from '../composables/useBudget';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
@@ -61,14 +61,14 @@ const handleUpdateTransaction = (
   updateTransaction(id, description, amount, date);
 };
 
-const handleCalculate = () => {
+watch([startDate, endDate], () => {
   if (startDate.value && endDate.value) {
     const start = new Date(startDate.value);
     const end = new Date(endDate.value);
     end.setHours(23, 59, 59, 999);
     currentDateRange.value = { startDate: start, endDate: end };
   }
-};
+});
 
 const formatCurrency = (amount: number): string => {
   return `€${amount.toFixed(2)}`;
@@ -124,13 +124,12 @@ const balanceColor = computed(() => {
           <div class="date-range-selector">
             <div class="date-input-group">
               <label>Da:</label>
-              <input v-model="startDate" type="date" @change="handleCalculate" />
+              <input v-model="startDate" type="date" />
             </div>
             <div class="date-input-group">
               <label>A:</label>
-              <input v-model="endDate" type="date" @change="handleCalculate" />
+              <input v-model="endDate" type="date" />
             </div>
-            <button class="btn-calculate" @click="handleCalculate">Calcola</button>
           </div>
 
           <div class="summary">
@@ -223,7 +222,7 @@ const balanceColor = computed(() => {
 }
 
 .date-input-group:last-of-type {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .date-input-group label {
@@ -250,25 +249,7 @@ const balanceColor = computed(() => {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
 }
 
-.btn-calculate {
-  width: 100%;
-  padding: 0.75rem;
-  background: rgba(13, 72, 83, 0.64);
-  border: none;
-  border-radius: 6px;
-  color: white;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
 
-.btn-calculate:hover {
-  background: rgba(13, 72, 83, 0.8);
-  transform: translateY(-2px);
-}
 
 .summary {
   background: rgba(255, 255, 255, 0.15);
