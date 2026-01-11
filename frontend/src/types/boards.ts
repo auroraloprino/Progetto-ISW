@@ -4,6 +4,7 @@ export interface Task {
   columnId: string;
   boardSlug: string;
   order: number;
+  completed?: boolean;
 }
 
 export interface Column {

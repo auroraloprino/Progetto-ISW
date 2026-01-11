@@ -171,11 +171,10 @@ const balanceColor = computed(() => {
 }
 
 .card {
-  background: var(--bg-card, rgba(107, 134, 132, 0.85));
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  background: rgba(13, 72, 83, 0.69);
+  border-radius: 16px;
+  padding: 8px;
+  box-shadow: 0 4px 20px rgba(13, 72, 83, 0.08);
   position: relative;
   min-height: 500px;
   height: 100%;
@@ -186,25 +185,26 @@ const balanceColor = computed(() => {
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(13, 72, 83, 0.2);
 }
 
 .card-title {
-  font-family: 'Playfair Display', serif;
+  color: white;
   font-size: 1.8rem;
   font-weight: 700;
-  color: var(--text-light, #e8f4f3);
   margin-bottom: 1.5rem;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+  text-align: center;
 }
 
 .budget-summary {
+  background: rgba(235, 235, 235, 0.31);
+  border-radius: 12px;
+  padding: 1.5rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 0;
 }
 
 .date-range-selector {
@@ -227,7 +227,7 @@ const balanceColor = computed(() => {
 }
 
 .date-input-group label {
-  color: var(--text-light, #e8f4f3);
+  color: white;
   font-weight: 600;
   min-width: 40px;
 }
@@ -253,11 +253,10 @@ const balanceColor = computed(() => {
 .btn-calculate {
   width: 100%;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  background: rgba(13, 72, 83, 0.64);
   border: none;
   border-radius: 6px;
   color: white;
-  font-family: 'Work Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
@@ -267,8 +266,8 @@ const balanceColor = computed(() => {
 }
 
 .btn-calculate:hover {
+  background: rgba(13, 72, 83, 0.8);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(66, 153, 225, 0.4);
 }
 
 .summary {
@@ -303,7 +302,7 @@ const balanceColor = computed(() => {
 }
 
 .summary-label {
-  color: var(--text-light, #e8f4f3);
+  color: white;
   font-size: 1rem;
   font-weight: 600;
 }
@@ -311,24 +310,21 @@ const balanceColor = computed(() => {
 .summary-value {
   font-size: 1.3rem;
   font-weight: 700;
-  font-family: 'Playfair Display', serif;
   word-wrap: break-word;
   text-align: right;
 }
 
 .income-value {
-  color: var(--accent-income, #48bb78);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 .expense-value {
-  color: var(--accent-expense, #f56565);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 .balance-value {
   font-size: 1.5rem;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #333;
 }
 
 /* Desktop grande */
