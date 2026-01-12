@@ -32,17 +32,44 @@
         </div>
 
         <div class="username-bar">
-          {{ user?.email }}
+          {{ user?.username }}
         </div>
 
-        <div class="account-actions">
-          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-        </div>
+        
+<div class="account-actions">
 
+  <button class="action-btn" @click="showEdit = !showEdit">
+    Modifica dati account
+    <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+  </button>
+
+  <div v-if="showEdit" class="dropdown">
+    <input v-model="newUsername" placeholder="Nuovo username" />
+    <button @click="changeUsername">Salva username</button>
+
+    <input v-model="newEmail" type="email" placeholder="Nuova email" />
+    <button @click="changeEmail">Salva email</button>
+  </div>
+
+  <button class="action-btn" @click="showPassword = !showPassword">
+    Cambia password
+    <i class="fas" :class="showPassword ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+  </button>
+
+  <div v-if="showPassword" class="dropdown">
+    <input v-model="oldPassword" type="password" placeholder="Password attuale" />
+    <input v-model="newPassword" type="password" placeholder="Nuova password" />
+    <button @click="changePassword">Aggiorna password</button>
+  </div>
+
+</div>
         <div class="theme-controls">
           <button @click="handleToggleTheme" class="theme-btn">
             {{ currentThemeMode === 'dark' ? 'Modalità Chiara' : 'Modalità Scura' }}
           </button>
+        </div>
+        <div class="account-actions">
+          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
         </div>
       </div>
     </div>
@@ -62,6 +89,13 @@ const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const newUsername = ref("")
+const newEmail = ref("")
+const oldPassword = ref("")
+const newPassword = ref("")
+const showEdit = ref(false)
+const showPassword = ref(false)
+
 
 function logoutAndGo() {
   logout()
@@ -93,4 +127,69 @@ const handleImageUpload = async (event: Event) => {
 onMounted(() => {
   currentThemeMode.value = getCurrentTheme()
 })
+function changeUsername() {
+  if (!user.value) return
+  if (!newUsername.value) return alert("Username non valido")
+
+  updateUser({ username: newUsername.value })
+  user.value = currentUser()
+  newUsername.value = ""
+}
+function changeEmail() {
+  if (!user.value) return
+  if (!newEmail.value) return alert("Email non valida")
+
+  updateUser({ email: newEmail.value })
+  user.value = currentUser()
+  newEmail.value = ""
+}
+function changePassword() {
+  if (!user.value) return
+
+  if (user.value.password !== oldPassword.value) {
+    alert("Password attuale errata")
+    return
+  }
+
+  if (!newPassword.value) {
+    alert("Nuova password non valida")
+    return
+  }
+
+  updateUser({ password: newPassword.value })
+  oldPassword.value = ""
+  newPassword.value = ""
+  alert("Password aggiornata")
+}
 </script>
+<style scoped>
+  .action-btn {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: bold;
+  background: rgba(13,72,83,0.8);
+  color: white;
+  border: none;
+  cursor: pointer;
+  padding: 0.8rem 2.5rem;
+  border-radius: 12px;
+  transition: 0.3s;
+}
+  
+.dropdown {
+  padding: 10px;
+  background: rgba(13,72,83,0.8);
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.dropdown input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+}
+
+.dropdown button {
+  width: 100%;
+}
+</style>
