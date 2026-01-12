@@ -31,6 +31,7 @@
       
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      
     </div>
   </nav>
 
@@ -84,7 +85,7 @@
              @dragover.prevent
              @drop="handleDrop($event, column.id)">
           <div 
-            v-for="(task, index) in column.tasks" 
+            v-for="task in column.tasks" 
             :key="task.id"
             :class="['task-card', { completed: task.completed }]"
             draggable="true"
@@ -264,7 +265,7 @@ const saveColumnTitle = (columnId: string) => {
 };
 
 const handleDeleteColumn = (columnId: string) => {
-  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
+  if (boardSlug.value !== null) {
     deleteColumn(boardSlug.value, columnId);
   }
 };

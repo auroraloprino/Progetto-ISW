@@ -25,6 +25,14 @@
 [data-theme="dark"] .week-hour-event,
 [data-theme="dark"] .all-day-event,
 [data-theme="dark"] .hour-event {
+  color: white !important;
+}
+
+[data-theme="dark"] .calendar-event[style*="background: #0d4853"],
+[data-theme="dark"] .week-all-day-event[style*="background: #0d4853"],
+[data-theme="dark"] .week-hour-event[style*="background: #0d4853"],
+[data-theme="dark"] .all-day-event[style*="background: #0d4853"],
+[data-theme="dark"] .hour-event[style*="background: #0d4853"] {
   background: #64b5f6 !important;
   color: #1a1a1a !important;
 }
@@ -33,7 +41,7 @@
   background: #64b5f6 !important;
 }
 
-[data-theme="dark"] .event-color {
+[data-theme="dark"] .event-color[style*="background: #0d4853"] {
   background: #64b5f6 !important;
 }
 
@@ -52,7 +60,20 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg-color);
   min-height: 100vh;
+}
+
+body.no-scroll {
   overflow: hidden;
+}
+
+body.no-scroll:before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 nav {
@@ -1250,8 +1271,8 @@ nav {
   height: calc(100vh - 80px);
   display: flex;
   align-items: center;
-  justify-content: flex-end;   
-  padding-right: 3rem;
+  justify-content: center;
+  padding: 0;
 }
 
 .account-card {
@@ -1782,14 +1803,148 @@ select.view-selector {
   align-items: center;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.search-toggle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
+}
+
+.search-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(13, 72, 83, 0.4);
+}
+
 .page-content h1 {
   color: var(--text-color);
   font-size: 2.5rem;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
 .page-content p {
   color: var(--text-color);
   font-size: 1.2rem;
   opacity: 0.7;
+}
+
+.search-container {
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1rem 3rem 1rem 1.5rem;
+  border: 2px solid var(--primary-color);
+  border-radius: 25px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--primary-color);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  background: white;
+  box-shadow: 0 0 0 3px rgba(13, 72, 83, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  right: 1.5rem;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 10;
+  margin-top: 0.5rem;
+}
+
+.search-result {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.search-result:hover {
+  background: #f8f9fa;
+}
+
+.search-result:last-child {
+  border-bottom: none;
+}
+
+.result-board {
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+}
+
+.result-task {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Account page layout - Two columns */
+.account-content {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  justify-content: space-between;  /* Cambiato da center */
+  width: 100%;
+  max-width: none;  /* Rimosso limite */
+  padding: 0 2rem;  /* Padding laterale */
+}
+
+.account-content .account-card {
+  flex-shrink: 0;
+  margin-right: 1rem;  /* Piccolo margine dal bordo */
+}
+
+/* Responsive layout */
+@media (max-width: 1024px) {
+  .account-content {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .account-wrapper {
+    justify-content: center;
+    padding: 2rem;
+  }
 }

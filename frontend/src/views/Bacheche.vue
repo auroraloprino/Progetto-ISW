@@ -31,11 +31,41 @@
       
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      
     </div>
   </nav>
 
   <div class="page-content">
-    <h1>Le mie Bacheche</h1>
+    <div class="page-header">
+      <button class="search-toggle" @click="toggleSearch" title="Cerca nelle bacheche">
+        🔎︎
+      </button>
+      <h1>Le mie Bacheche</h1>
+    </div>
+    
+    <div v-if="showSearch" class="search-container">
+      <div class="search-input-wrapper">
+        <input 
+          v-model="searchQuery" 
+          @input="handleSearch"
+          class="search-input" 
+          placeholder="Cerca nelle bacheche..."
+          ref="searchInputRef"
+        />
+        <i class="fas fa-search search-icon"></i>
+      </div>
+      <div v-if="showSearchResults && searchResults.length > 0" class="search-results">
+        <div 
+          v-for="result in searchResults" 
+          :key="`${result.boardSlug}-${result.taskId}`"
+          class="search-result"
+          @click="goToBoard(result.boardSlug)"
+        >
+          <div class="result-board">{{ result.boardTitle }}</div>
+          <div class="result-task">{{ result.taskText }}</div>
+        </div>
+      </div>
+    </div>
     
     <div class="boards-container">
       <div 
@@ -72,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, reactive } from 'vue';
+import { ref, nextTick, reactive, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
 import type { Board } from '../types/boards';
@@ -90,7 +120,27 @@ const {
 const dropdownOpen = ref(false);
 const boardTitles = reactive<Record<string, string>>({});
 const titleInputs = ref<HTMLInputElement[]>([]);
+const searchQuery = ref('');
+const searchResults = ref<any[]>([]);
+const showSearchResults = ref(false);
+const showSearch = ref(false);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.search-container')) {
+    showSearchResults.value = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 // Dropdown handlers
 const toggleDropdown = () => {
@@ -162,13 +212,61 @@ const saveBoardTitle = (board: Board) => {
 };
 
 const handleDeleteBoard = (slug: string) => {
-  if (confirm('Sei sicuro di voler eliminare questa bacheca?')) {
-    deleteBoard(slug);
-  }
+  deleteBoard(slug);
 };
 
 const openBoard = (slug: string) => {
   router.push(`/bacheche/${slug}`);
+};
+
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) {
+    searchResults.value = [];
+    showSearchResults.value = false;
+    return;
+  }
+  
+  const results: any[] = [];
+  const query = searchQuery.value.toLowerCase();
+  
+  boards.value.forEach(board => {
+    board.columns.forEach(column => {
+      column.tasks.forEach(task => {
+        if (task.title && task.title.toLowerCase().includes(query)) {
+          results.push({
+            boardSlug: board.slug,
+            boardTitle: board.title,
+            taskId: task.id,
+            taskText: task.title
+          });
+        }
+      });
+    });
+  });
+  
+  searchResults.value = results;
+  showSearchResults.value = results.length > 0;
+};
+
+const goToBoard = (slug: string) => {
+  searchQuery.value = '';
+  searchResults.value = [];
+  showSearchResults.value = false;
+  showSearch.value = false;
+  router.push(`/bacheche/${slug}`);
+};
+
+const toggleSearch = () => {
+  showSearch.value = !showSearch.value;
+  if (showSearch.value) {
+    nextTick(() => {
+      searchInputRef.value?.focus();
+    });
+  } else {
+    searchQuery.value = '';
+    searchResults.value = [];
+    showSearchResults.value = false;
+  }
 };
 </script>
 
@@ -364,7 +462,7 @@ const openBoard = (slug: string) => {
 .page-content {
   padding: 0.5rem 2rem !important;
   margin-top: 100px !important;
-  height: calc(100vh - 100px) !important;
+  min-height: calc(100vh - 100px) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;

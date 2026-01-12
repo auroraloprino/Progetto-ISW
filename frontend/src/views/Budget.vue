@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useBudget } from '../composables/useBudget';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
@@ -79,6 +79,15 @@ const balanceColor = computed(() => {
   if (budgetSummary.value.balance < 0) return 'var(--accent-expense)';
   return 'var(--accent-balance)';
 });
+onMounted(() => {
+  document.body.classList.add('no-scroll');
+  window.scrollTo(0, 0);
+});
+
+onUnmounted(() => {
+  document.body.classList.remove('no-scroll');
+  window.scrollTo(0, 0);
+});
 </script>
 
 <template>
@@ -89,6 +98,7 @@ const balanceColor = computed(() => {
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget" class="active"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      
     </div>
   </nav>
 

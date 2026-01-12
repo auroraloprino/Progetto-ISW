@@ -10,34 +10,40 @@
   </nav>
 
   <div class="account-wrapper">
-    <div class="account-card">
-      <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
-        <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
-        <i v-else class="fas fa-user-circle"></i>
-        <div class="upload-overlay">
-          <i class="fas fa-camera"></i>
+    <div class="account-content">
+      <!-- Notifications Area - LEFT -->
+      <NotificationsArea />
+
+      <!-- Account Card - RIGHT -->
+      <div class="account-card">
+        <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
+          <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
+          <i v-else class="fas fa-user-circle"></i>
+          <div class="upload-overlay">
+            <i class="fas fa-camera"></i>
+          </div>
+          <input 
+            ref="fileInput" 
+            type="file" 
+            accept="image/*" 
+            @change="handleImageUpload" 
+            style="display: none"
+          />
         </div>
-        <input 
-          ref="fileInput" 
-          type="file" 
-          accept="image/*" 
-          @change="handleImageUpload" 
-          style="display: none"
-        />
-      </div>
 
-      <div class="username-bar">
-        {{ user?.email }}
-      </div>
+        <div class="username-bar">
+          {{ user?.email }}
+        </div>
 
-      <div class="account-actions">
-        <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-      </div>
+        <div class="account-actions">
+          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
+        </div>
 
-      <div class="theme-controls">
-        <button @click="handleToggleTheme" class="theme-btn">
-          {{ currentThemeMode === 'dark' ? 'Modalità Chiara' : 'Modalità Scura' }}
-        </button>
+        <div class="theme-controls">
+          <button @click="handleToggleTheme" class="theme-btn">
+            {{ currentThemeMode === 'dark' ? 'Modalità Chiara' : 'Modalità Scura' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -45,6 +51,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import NotificationsArea from '../components/NotificationsArea.vue'
 import { currentUser, logout, updateUser, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
