@@ -7,8 +7,6 @@
         <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
         <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
         
-        <!-- Notification Bell -->
-        <NotificationBell />
       </div>
     </nav>
     
@@ -355,7 +353,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import NotificationBell from './NotificationBell.vue'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 

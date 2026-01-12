@@ -32,8 +32,6 @@
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
       
-      <!-- Notification Bell -->
-      <NotificationBell />
     </div>
   </nav>
 
@@ -146,7 +144,6 @@
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
-import NotificationBell from '../components/NotificationBell.vue';
 
 const route = useRoute();
 const router = useRouter();

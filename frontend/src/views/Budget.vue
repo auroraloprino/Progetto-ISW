@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useBudget } from '../composables/useBudget';
-import NotificationBell from '../components/NotificationBell.vue';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
 
@@ -100,8 +99,6 @@ onUnmounted(() => {
       <RouterLink to="/budget" class="active"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
       
-      <!-- Notification Bell -->
-      <NotificationBell />
     </div>
   </nav>
 
