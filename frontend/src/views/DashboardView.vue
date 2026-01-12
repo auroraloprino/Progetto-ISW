@@ -35,9 +35,7 @@
           {{ user?.username }}
         </div>
 
-        <div class="account-actions">
-          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-        </div>
+        
 <div class="account-actions">
 
   <button class="action-btn" @click="showEdit = !showEdit">
@@ -69,6 +67,9 @@
           <button @click="handleToggleTheme" class="theme-btn">
             {{ currentThemeMode === 'dark' ? 'Modalità Chiara' : 'Modalità Scura' }}
           </button>
+        </div>
+        <div class="account-actions">
+          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
         </div>
       </div>
     </div>
@@ -163,20 +164,22 @@ function changePassword() {
 </script>
 <style scoped>
   .action-btn {
-  width: 100%;
+  text-align: center;
   margin-top: 10px;
-  padding: 10px;
   font-weight: bold;
-  background: #222;
+  background: rgba(13,72,83,0.8);
   color: white;
   border: none;
   cursor: pointer;
+  padding: 0.8rem 2.5rem;
+  border-radius: 12px;
+  transition: 0.3s;
 }
-
+  
 .dropdown {
   padding: 10px;
-  background: #111;
-  border-radius: 8px;
+  background: rgba(13,72,83,0.8);
+  border-radius: 12px;
   margin-bottom: 10px;
 }
 
