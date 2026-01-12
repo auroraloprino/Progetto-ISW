@@ -45,13 +45,23 @@
     <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
   </button>
 
-  <div v-if="showEdit" class="dropdown">
-    <input v-model="newUsername" placeholder="Nuovo username" />
-    <button @click="changeUsername">Salva username</button>
+<div v-if="showEdit" class="dropdown">
 
-    <input v-model="newEmail" type="email" placeholder="Nuova email" />
-    <button @click="changeEmail">Salva email</button>
+  <div class="edit-block">
+    <input v-model="newUsername" placeholder="Nuovo username" />
+    <button class="dropdown-action-btn" @click="changeUsername">
+  Salva username
+</button>
   </div>
+
+  <div class="edit-block">
+    <input v-model="newEmail" type="email" placeholder="Nuova email" />
+    <button class="dropdown-action-btn" @click="changeEmail">
+  Salva email
+</button>
+  </div>
+
+</div>
 
   <button class="action-btn" @click="showPassword = !showPassword">
     Cambia password
@@ -61,7 +71,9 @@
   <div v-if="showPassword" class="dropdown">
     <input v-model="oldPassword" type="password" placeholder="Password attuale" />
     <input v-model="newPassword" type="password" placeholder="Nuova password" />
-    <button @click="changePassword">Aggiorna password</button>
+    <button class="dropdown-action-btn" @click="changePassword">
+  Aggiorna password
+</button>
   </div>
 
 </div>
@@ -206,6 +218,7 @@ function changePassword() {
 
 .action-btn {
   text-align: center;
+  gap: 20px;
   margin-top: 10px;
   font-weight: bold;
   background: rgba(13,72,83,0.8);
@@ -215,6 +228,12 @@ function changePassword() {
   padding: 0.8rem 2.5rem;
   border-radius: 12px;
   transition: 0.3s;
+}
+.account-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
   
 .dropdown {
@@ -232,5 +251,35 @@ function changePassword() {
 
 .dropdown button {
   width: 100%;
+}
+.edit-block {
+  width: 100%;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-block button {
+  margin-top: 4px;
+}
+.dropdown-action-btn {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  border: none;
+
+  background: rgba(13,72,83,0.9);
+  color: white;
+  font-weight: bold;
+  text-align: center;
+
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.dropdown-action-btn:hover {
+  background: rgba(13,72,83,1);
+  transform: scale(1.02);
 }
 </style>

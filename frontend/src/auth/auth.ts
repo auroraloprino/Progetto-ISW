@@ -24,9 +24,15 @@ export function register(user: User) {
   saveUsers(users)
   return true
 }
-export function login(email:string,password:string){
-  const u = getUsers().find(u=>u.email===email && u.password===password)
-  if(!u) return false
+export function login(identifier: string, password: string) {
+  const u = getUsers().find(
+    u =>
+      (u.email === identifier || u.username === identifier) &&
+      u.password === password
+  )
+
+  if (!u) return false
+
   localStorage.setItem(SESSION_KEY, JSON.stringify(u))
   return true
 }
