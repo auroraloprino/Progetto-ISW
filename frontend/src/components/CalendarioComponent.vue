@@ -1072,10 +1072,13 @@ onMounted(() => {
   loadData()
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
+  document.body.classList.add('no-scroll')
+  window.scrollTo(0, 0)
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutside)
+  document.body.classList.remove('no-scroll')
 })
 </script>

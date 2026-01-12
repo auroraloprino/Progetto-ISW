@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useBudget } from '../composables/useBudget';
 import NotificationBell from '../components/NotificationBell.vue';
 import TransactionCard from '../components/TransactionCard.vue';
@@ -79,6 +79,15 @@ const balanceColor = computed(() => {
   if (budgetSummary.value.balance > 0) return 'var(--accent-income)';
   if (budgetSummary.value.balance < 0) return 'var(--accent-expense)';
   return 'var(--accent-balance)';
+});
+onMounted(() => {
+  document.body.classList.add('no-scroll');
+  window.scrollTo(0, 0);
+});
+
+onUnmounted(() => {
+  document.body.classList.remove('no-scroll');
+  window.scrollTo(0, 0);
 });
 </script>
 

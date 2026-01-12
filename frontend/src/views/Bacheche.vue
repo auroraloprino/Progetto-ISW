@@ -368,7 +368,7 @@ const openBoard = (slug: string) => {
 .page-content {
   padding: 0.5rem 2rem !important;
   margin-top: 100px !important;
-  height: calc(100vh - 100px) !important;
+  min-height: calc(100vh - 100px) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-start !important;
