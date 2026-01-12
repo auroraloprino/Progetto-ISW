@@ -3,8 +3,9 @@
   <div class="auth-box">
     <div class="auth-logo">CHRONIO</div>
 
-    <input v-model="user" placeholder="Username / Email">
-    <input v-model="pass" type="password" placeholder="Password">
+<input v-model="username" type="text" placeholder="Username" />
+<input v-model="email" type="email" placeholder="Email" />
+<input v-model="password" type="password" placeholder="Password" />
     <input v-model="confirm" type="password" placeholder="Conferma Password">
 
     <button @click="doRegister">Registrati</button>
@@ -23,14 +24,28 @@ import { register } from '../auth/auth'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const user = ref('')
-const pass = ref('')
-const confirm = ref('')
 
-function doRegister(){
- if(pass.value!==confirm.value) return alert("Le password non coincidono")
- if(!register({email:user.value,password:pass.value}))
-  alert("Utente già esistente")
- else router.push('/login')
+const username = ref("")
+const email = ref("")
+const password = ref("")
+const confirm = ref("")
+
+async function doRegister() {
+  if (password.value !== confirm.value) {
+    alert("Le password non coincidono")
+    return
+  }
+
+  const success = await register({
+    username: username.value,
+    email: email.value,
+    password: password.value
+  })
+
+  if (!success) {
+    alert("Utente già esistente")
+  } else {
+    router.push('/login')
+  }
 }
 </script>
