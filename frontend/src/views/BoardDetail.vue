@@ -268,7 +268,7 @@ const saveColumnTitle = (columnId: string) => {
 };
 
 const handleDeleteColumn = (columnId: string) => {
-  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
+  if (boardSlug.value !== null) {
     deleteColumn(boardSlug.value, columnId);
   }
 };
