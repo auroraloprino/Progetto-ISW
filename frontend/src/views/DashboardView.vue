@@ -146,10 +146,6 @@ const handleImageUpload = async (event: Event) => {
   }
 }
 
-onMounted(() => {
-  currentThemeMode.value = getCurrentTheme()
-})
-
 function changeUsername() {
   if (!user.value) return
   if (!newUsername.value) return alert("Username non valido")
@@ -236,6 +232,5 @@ function changePassword() {
 
 .dropdown button {
   width: 100%;
-}
 }
 </style>
