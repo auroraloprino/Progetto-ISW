@@ -13,12 +13,7 @@ export interface Notification {
 }
 
 const NOTIFICATIONS_KEY = 'chronio_notifications';
-const CHECK_INTERVAL = 60000; // Check ogni minuto
-const NOTIFICATION_TIMES = [
-  { minutes: 15, label: '15 minuti' },
-  { minutes: 60, label: '1 ora' },
-  { minutes: 1440, label: '1 giorno' }
-];
+const CHECK_INTERVAL = 60000;
 
 export function useNotifications() {
   const notifications = ref<Notification[]>([]);
@@ -26,7 +21,6 @@ export function useNotifications() {
   const tags = ref<Tag[]>([]);
   let checkInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Load notifications from localStorage
   const loadNotifications = () => {
     try {
       const saved = localStorage.getItem(NOTIFICATIONS_KEY);
@@ -38,12 +32,10 @@ export function useNotifications() {
         }));
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
       notifications.value = [];
     }
   };
 
-  // Save notifications to localStorage
   const saveNotifications = () => {
     try {
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.value));
@@ -52,147 +44,120 @@ export function useNotifications() {
     }
   };
 
-  // Load events from localStorage
   const loadEvents = () => {
     try {
-      const savedEvents = localStorage.getItem('calendarEvents');
-      const savedTags = localStorage.getItem('calendarTags');
+      const savedEvents = localStorage.getItem('calendar_events');
+      const savedTags = localStorage.getItem('calendar_tags');
       
       if (savedEvents) {
-        events.value = JSON.parse(savedEvents);
+        const data = JSON.parse(savedEvents);
+        events.value = data.events || {};
       }
       
       if (savedTags) {
-        tags.value = JSON.parse(savedTags);
+        const data = JSON.parse(savedTags);
+        tags.value = data.tags || [];
       }
     } catch (error) {
       console.error('Error loading events:', error);
     }
   };
 
-  // Generate unique notification ID
-  const generateNotificationId = (eventId: number, minutesBefore: number): string => {
-    return `${eventId}-${minutesBefore}`;
-  };
-
-  // Get tag by ID
   const getTagById = (tagId?: number): Tag | undefined => {
     if (!tagId) return undefined;
     return tags.value.find(t => t.id === tagId);
   };
 
-  // Check if notification already exists
-  const notificationExists = (notificationId: string): boolean => {
-    return notifications.value.some(n => n.id === notificationId);
-  };
-
-  // Create notification for an event
-  const createNotification = (event: Event, minutesBefore: number) => {
-    const notificationId = generateNotificationId(event.id, minutesBefore);
-    
-    // Don't create if already exists
-    if (notificationExists(notificationId)) {
-      return;
-    }
-
-    const eventDate = new Date(event.datetime);
-    const now = new Date();
-    const timeDiff = eventDate.getTime() - now.getTime();
-    const minutesDiff = Math.floor(timeDiff / 60000);
-
-    // Only create notification if event is in the future and within notification window
-    if (minutesDiff > 0 && minutesDiff <= minutesBefore) {
-      const tag = getTagById(event.tag);
-      const timeLabel = NOTIFICATION_TIMES.find(t => t.minutes === minutesBefore)?.label || `${minutesBefore} minuti`;
-      
-      const notification: Notification = {
-        id: notificationId,
-        eventId: event.id,
-        title: `📅 ${event.title}`,
-        message: `Inizia tra ${timeLabel}${tag ? ` • ${tag.name}` : ''}`,
-        datetime: event.datetime,
-        type: minutesBefore <= 15 ? 'warning' : 'info',
-        read: false,
-        createdAt: new Date()
-      };
-
-      notifications.value.unshift(notification);
-      saveNotifications();
-
-      // Show browser notification if permitted
-      showBrowserNotification(notification);
-    }
-  };
-
-  // Show browser notification
-  const showBrowserNotification = (notification: Notification) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const browserNotif = new Notification(notification.title, {
-        body: notification.message,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: notification.id
-      });
-
-      browserNotif.onclick = () => {
-        window.focus();
-        markAsRead(notification.id);
-        browserNotif.close();
-      };
-    }
-  };
-
-  // Request notification permission
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
-    }
-    return Notification.permission === 'granted';
-  };
-
-  // Check for upcoming events and create notifications
   const checkUpcomingEvents = () => {
-    loadEvents(); // Reload events in case they changed
+    loadEvents();
     
     const now = new Date();
+    const uniqueEvents = new Map<number, Event>();
     
-    // Get all events
-    const allEvents: Event[] = [];
     Object.values(events.value).forEach(dayEvents => {
-      allEvents.push(...dayEvents);
+      dayEvents.forEach(event => {
+        uniqueEvents.set(event.id, event);
+      });
     });
 
-    // Check each event
-    allEvents.forEach(event => {
+    const newNotifications: Notification[] = [];
+
+    uniqueEvents.forEach(event => {
       const eventDate = new Date(event.datetime);
       const timeDiff = eventDate.getTime() - now.getTime();
       const minutesDiff = Math.floor(timeDiff / 60000);
 
-      // Skip past events
-      if (minutesDiff < 0) return;
+      if (minutesDiff <= 0) return;
 
-      // Check each notification time
-      NOTIFICATION_TIMES.forEach(notifTime => {
-        // Create notification if within window
-        if (minutesDiff <= notifTime.minutes && minutesDiff > 0) {
-          createNotification(event, notifTime.minutes);
+      const tag = getTagById(event.tag);
+      const hours = Math.floor(minutesDiff / 60);
+      const days = Math.floor(hours / 24);
+      
+      let timeMessage;
+      if (days > 0) {
+        timeMessage = `Inizia tra ${days} giorn${days === 1 ? 'o' : 'i'}`;
+      } else if (hours > 0) {
+        timeMessage = `Inizia tra ${hours} or${hours === 1 ? 'a' : 'e'}`;
+      } else {
+        timeMessage = `Inizia tra ${minutesDiff} minut${minutesDiff === 1 ? 'o' : 'i'}`;
+      }
+
+      if (minutesDiff <= 30) {
+        const id30 = `${event.id}-30min`;
+        const existing = notifications.value.find(n => n.id === id30);
+        if (existing) {
+          existing.message = `${timeMessage}${tag ? ` • ${tag.name}` : ''}`;
+          newNotifications.push(existing);
+        } else {
+          const newNotif = {
+            id: id30,
+            eventId: event.id,
+            title: event.title,
+            message: `${timeMessage}${tag ? ` • ${tag.name}` : ''}`,
+            datetime: event.datetime,
+            type: 'warning' as const,
+            read: false,
+            createdAt: new Date()
+          };
+          newNotifications.push(newNotif);
+          
+          // Show browser notification for new 30-minute warnings
+          if (Notification.permission === 'granted') {
+            new Notification(`${event.title}`, {
+              body: `${timeMessage}${tag ? ` • ${tag.name}` : ''}`,
+              icon: '/favicon.ico'
+            });
+          }
         }
-      });
+      } else if (minutesDiff <= 10080) {
+        const id7d = `${event.id}-7days`;
+        const existing = notifications.value.find(n => n.id === id7d);
+        if (existing) {
+          existing.message = `${timeMessage}${tag ? ` • ${tag.name}` : ''}`;
+          newNotifications.push(existing);
+        } else {
+          newNotifications.push({
+            id: id7d,
+            eventId: event.id,
+            title: event.title,
+            message: `${timeMessage}${tag ? ` • ${tag.name}` : ''}`,
+            datetime: event.datetime,
+            type: 'info',
+            read: false,
+            createdAt: new Date()
+          });
+        }
+      }
     });
 
-    // Clean old notifications (older than 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    notifications.value = notifications.value.filter(n => 
-      new Date(n.createdAt) > sevenDaysAgo
-    );
+    notifications.value = newNotifications.filter(n => {
+      const eventDate = new Date(n.datetime);
+      return eventDate > now;
+    });
     
     saveNotifications();
   };
 
-  // Mark notification as read
   const markAsRead = (notificationId: string) => {
     const notification = notifications.value.find(n => n.id === notificationId);
     if (notification) {
@@ -201,34 +166,39 @@ export function useNotifications() {
     }
   };
 
-  // Mark all as read
   const markAllAsRead = () => {
     notifications.value.forEach(n => n.read = true);
     saveNotifications();
   };
 
-  // Delete notification
   const deleteNotification = (notificationId: string) => {
     notifications.value = notifications.value.filter(n => n.id !== notificationId);
     saveNotifications();
   };
 
-  // Clear all notifications
   const clearAllNotifications = () => {
     notifications.value = [];
     saveNotifications();
   };
 
-  // Computed
-  const unreadCount = computed(() => 
-    notifications.value.filter(n => !n.read).length
-  );
+  const forceRefreshNotifications = () => {
+    checkUpcomingEvents();
+  };
 
-  const sortedNotifications = computed(() => 
-    [...notifications.value].sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-  );
+  const unreadCount = computed(() => {
+    const count = notifications.value.filter(n => !n.read && n.type === 'warning').length;
+    return count;
+  });
+
+  const sortedNotifications = computed(() => {
+    return [...notifications.value].sort((a, b) => {
+      if (a.read !== b.read) {
+        return a.read ? 1 : -1;
+      }
+      
+      return new Date(a.datetime).getTime() - new Date(b.datetime).getTime();
+    });
+  });
 
   const upcomingNotifications = computed(() =>
     sortedNotifications.value.filter(n => {
@@ -237,7 +207,6 @@ export function useNotifications() {
     })
   );
 
-  // Format time until event
   const formatTimeUntil = (datetime: string): string => {
     const eventDate = new Date(datetime);
     const now = new Date();
@@ -249,28 +218,38 @@ export function useNotifications() {
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     
+    const isToday = eventDate.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      if (hours > 0) return `Tra ${hours}h`;
+      if (minutes > 0) return `Tra ${minutes}min`;
+      return 'Adesso!';
+    }
+    
     if (days > 0) return `Tra ${days}g`;
     if (hours > 0) return `Tra ${hours}h`;
     if (minutes > 0) return `Tra ${minutes}min`;
     return 'Adesso!';
   };
 
-  // Initialize
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    }
+    return Notification.permission === 'granted';
+  };
+
   const initialize = () => {
     loadNotifications();
-    loadEvents();
-    
-    // Initial check
     checkUpcomingEvents();
     
-    // Set up periodic checks
+    if (checkInterval) clearInterval(checkInterval);
     checkInterval = setInterval(checkUpcomingEvents, CHECK_INTERVAL);
     
-    // Request notification permission
     requestNotificationPermission();
   };
 
-  // Cleanup
   const cleanup = () => {
     if (checkInterval) {
       clearInterval(checkInterval);
@@ -278,32 +257,28 @@ export function useNotifications() {
     }
   };
 
-  // Auto-initialize on mount
   onMounted(() => {
     initialize();
   });
 
-  // Cleanup on unmount
   onUnmounted(() => {
     cleanup();
   });
 
   return {
-    // State
     notifications: sortedNotifications,
     unreadCount,
     upcomingNotifications,
     
-    // Actions
     markAsRead,
     markAllAsRead,
     deleteNotification,
     clearAllNotifications,
+    forceRefreshNotifications,
     checkUpcomingEvents,
     requestNotificationPermission,
     formatTimeUntil,
     
-    // Utils
     initialize,
     cleanup
   };

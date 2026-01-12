@@ -5,7 +5,9 @@
       <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account
+        <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
+      </RouterLink>
     </div>
   </nav>
 
@@ -50,18 +52,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
 import { currentUser, logout, updateUser, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
+import { useNotifications } from '../composables/useNotifications'
 
 const user = ref<User | null>(currentUser())
 const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const { notifications } = useNotifications()
+
+onMounted(() => {
+  document.body.classList.add('dashboard-page')
+  currentThemeMode.value = getCurrentTheme()
+})
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    // Only count if event is within 30 minutes and in the future
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+})
 
 function logoutAndGo() {
   logout()
@@ -94,3 +117,24 @@ onMounted(() => {
   currentThemeMode.value = getCurrentTheme()
 })
 </script>
+
+<style scoped>
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
+}
+</style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useBudget } from '../composables/useBudget';
+import { useNotifications } from '../composables/useNotifications';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
 
@@ -12,6 +13,8 @@ const {
   deleteTransaction,
   calculateBudget
 } = useBudget();
+
+const { notifications } = useNotifications();
 
 const currentDateRange = ref<DateRange>({
   startDate: new Date(),
@@ -79,6 +82,19 @@ const balanceColor = computed(() => {
   if (budgetSummary.value.balance < 0) return 'var(--accent-expense)';
   return 'var(--accent-balance)';
 });
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+});
 onMounted(() => {
   document.body.classList.add('no-scroll');
   window.scrollTo(0, 0);
@@ -97,7 +113,9 @@ onUnmounted(() => {
       <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget" class="active"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account
+        <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
+      </RouterLink>
       
     </div>
   </nav>
@@ -434,5 +452,24 @@ onUnmounted(() => {
   .balance-value {
     font-size: 1.2rem;
   }
+}
+
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
 }
 </style>

@@ -5,7 +5,9 @@
         <RouterLink to="/calendario" class="active"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
         <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
         <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account
+          <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
+        </RouterLink>
         
       </div>
     </nav>
@@ -353,6 +355,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useNotifications } from '../composables/useNotifications'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
@@ -404,6 +407,21 @@ const eventIdCounter = ref(1)
 
 const TAGS_KEY = 'calendar_tags'
 const EVENTS_KEY = 'calendar_events'
+
+const { notifications } = useNotifications()
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+})
 
 const loadData = () => {
   const savedTags = localStorage.getItem(TAGS_KEY)
@@ -771,16 +789,61 @@ const selectColor = (color: string) => {
   tagForm.value.color = color
 }
 
-const openEventModal = (day: number, month: number, year: number, hour = 9) => {
+const openEventModal = (day: number, month: number, year: number, hour?: number) => {
   editingEventId.value = null
   selectedDay.value = day
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  const timeStr = `${String(hour).padStart(2, '0')}:00`
+  
+  let startHour, startMinutes, endHour, endMinutes
+  
+  if (hour !== undefined) {
+    // Clicked on specific hour slot
+    startHour = hour
+    startMinutes = 0
+    endHour = hour + 1
+    endMinutes = 0
+  } else {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const selectedDate = new Date(year, month, day)
+    
+    if (selectedDate.getTime() === today.getTime()) {
+      // Today: use smart time logic
+      const currentMinutes = now.getMinutes()
+      const currentHour = now.getHours()
+      
+      if (currentMinutes === 0) {
+        startHour = currentHour
+        startMinutes = 0
+        endHour = currentHour + 1
+        endMinutes = 0
+      } else if (currentMinutes <= 30) {
+        startHour = currentHour
+        startMinutes = 30
+        endHour = currentHour + 1
+        endMinutes = 0
+      } else {
+        startHour = currentHour + 1
+        startMinutes = 0
+        endHour = currentHour + 2
+        endMinutes = 0
+      }
+    } else {
+      // Future days: default to 9-10
+      startHour = 9
+      startMinutes = 0
+      endHour = 10
+      endMinutes = 0
+    }
+  }
+  
+  const startTime = `${String(startHour).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`
+  const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
   
   eventForm.value = {
     title: '',
-    datetime: `${dateStr}T${timeStr}`,
-    endDatetime: `${dateStr}T${String(hour + 1).padStart(2, '0')}:00`,
+    datetime: `${dateStr}T${startTime}`,
+    endDatetime: `${dateStr}T${endTime}`,
     type: 'evento',
     description: '',
     tag: '',
@@ -792,8 +855,8 @@ const openEventModal = (day: number, month: number, year: number, hour = 9) => {
   setTimeout(() => {
     const startInput = document.querySelector('input[type="datetime-local"]') as HTMLInputElement
     const endInput = document.querySelectorAll('input[type="datetime-local"]')[1] as HTMLInputElement
-    if (startInput) startInput.value = `${dateStr}T${timeStr}`
-    if (endInput) endInput.value = `${dateStr}T${String(hour + 1).padStart(2, '0')}:00`
+    if (startInput) startInput.value = `${dateStr}T${startTime}`
+    if (endInput) endInput.value = `${dateStr}T${endTime}`
   }, 10)
 }
 
@@ -1079,3 +1142,24 @@ onUnmounted(() => {
   document.body.classList.remove('no-scroll')
 })
 </script>
+
+<style>
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
+}
+</style>

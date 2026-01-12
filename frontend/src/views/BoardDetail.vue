@@ -31,7 +31,6 @@
       
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
-      
     </div>
   </nav>
 
@@ -81,16 +80,11 @@
           </button>
         </div>
 
-        <div class="tasks-container"
-             @dragover.prevent
-             @drop="handleDrop($event, column.id)">
+        <div class="tasks-container">
           <div 
             v-for="task in column.tasks" 
             :key="task.id"
             :class="['task-card', { completed: task.completed }]"
-            draggable="true"
-            @dragstart="handleDragStart($event, task, column.id)"
-            @dragend="handleDragEnd"
           >
             <button 
               class="task-checkbox"
@@ -157,8 +151,7 @@ const {
   updateColumnTitle,
   addTask,
   deleteTask,
-  updateTaskTitle,
-  moveTask
+  updateTaskTitle
 } = useBoards();
 
 const dropdownOpen = ref(false);
@@ -170,7 +163,6 @@ const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
-let draggedTask: { task: any; sourceColumnId: string } | null = null;
 
 const boardSlug = computed(() => {
   const slug = route.params.slug;
@@ -265,7 +257,7 @@ const saveColumnTitle = (columnId: string) => {
 };
 
 const handleDeleteColumn = (columnId: string) => {
-  if (boardSlug.value !== null) {
+  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
     deleteColumn(boardSlug.value, columnId);
   }
 };
@@ -308,37 +300,6 @@ const toggleTaskComplete = (columnId: string, taskId: string) => {
       }
     }
   }
-};
-
-// Drag and drop handlers
-const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
-  draggedTask = { task, sourceColumnId: columnId };
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-  }
-};
-
-const handleDragEnd = () => {
-  draggedTask = null;
-};
-
-const handleDrop = (event: DragEvent, targetColumnId: string) => {
-  event.preventDefault();
-  
-  if (!draggedTask || !boardSlug.value) return;
-  
-  const { task, sourceColumnId } = draggedTask;
-  
-  if (sourceColumnId !== targetColumnId) {
-    // Find target position (append to end)
-    const board = getBoardBySlug(boardSlug.value);
-    const targetColumn = board?.columns.find(c => c.id === targetColumnId);
-    const newOrder = targetColumn?.tasks.length || 0;
-    
-    moveTask(boardSlug.value, task.id, sourceColumnId, targetColumnId, newOrder);
-  }
-  
-  draggedTask = null;
 };
 
 onMounted(() => {
@@ -429,7 +390,6 @@ onMounted(() => {
   justify-content: flex-start !important;
   align-items: center !important;
   text-align: center !important;
-  overflow-y: auto !important;
 }
 
 .page-title {
@@ -459,7 +419,6 @@ onMounted(() => {
   min-width: 300px;
 }
 
-/* Board header */
 .board-header {
   display: flex;
   justify-content: space-between;
@@ -605,28 +564,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
-  min-height: 100px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.tasks-container .task-card {
-  order: 1;
-}
-
-.tasks-container .task-card.completed {
-  order: 2;
-}
-
-.tasks-container .btn-add-task {
-  order: 0;
-}
-
-.tasks-container:hover {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .task-card {
@@ -640,11 +577,6 @@ onMounted(() => {
   position: relative;
   border: 1px solid rgba(13, 72, 83, 0.2);
   box-shadow: 0 1px 3px rgba(13, 72, 83, 0.1);
-  cursor: grab;
-}
-
-.task-card:active {
-  cursor: grabbing;
 }
 
 .task-card:hover {

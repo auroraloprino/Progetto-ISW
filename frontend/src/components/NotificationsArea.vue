@@ -1,50 +1,40 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { useNotifications } from '../composables/useNotifications';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
 
 const {
   notifications,
-  unreadCount,
   markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  formatTimeUntil
+  forceRefreshNotifications
 } = useNotifications();
 
-// Filter only unread notifications for the main display
-const unreadNotifications = computed(() => 
-  notifications.value.filter(n => !n.read)
+// Filter notifications for display (show all, but sort by read status and date)
+const displayNotifications = computed(() => 
+  [...notifications.value].sort((a, b) => {
+    // First sort by read status (unread first)
+    if (a.read !== b.read) {
+      return a.read ? 1 : -1;
+    }
+    
+    // Then sort chronologically by event datetime
+    return new Date(a.datetime).getTime() - new Date(b.datetime).getTime();
+  })
 );
 
 // Handle notification click
-const handleNotificationClick = (notificationId: string, datetime: string) => {
+const handleNotificationClick = (notificationId: string) => {
   markAsRead(notificationId);
-  // Navigate to calendar
-  router.push('/calendario');
-};
-
-// Handle mark all as read
-const handleMarkAllRead = () => {
-  markAllAsRead();
 };
 
 // Format datetime for display
 const formatDateTime = (datetime: string): string => {
   const date = new Date(datetime);
   const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
   
   const isToday = date.toDateString() === today.toDateString();
-  const isTomorrow = date.toDateString() === tomorrow.toDateString();
-  
   const time = date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   
   if (isToday) return `Oggi alle ${time}`;
-  if (isTomorrow) return `Domani alle ${time}`;
   
   const day = date.getDate();
   const month = date.toLocaleString('it-IT', { month: 'long' }).toUpperCase();
@@ -58,11 +48,14 @@ const formatDateTime = (datetime: string): string => {
   <div class="notifications-area">
     <div class="notifications-header">
       <h2>AREA NOTIFICHE</h2>
+      <button @click="forceRefreshNotifications" class="refresh-btn">
+        <i class="fas fa-sync"></i> Aggiorna
+      </button>
     </div>
 
     <div class="notifications-list">
       <div 
-        v-if="unreadNotifications.length === 0"
+        v-if="displayNotifications.length === 0"
         class="no-notifications"
       >
         <i class="fas fa-bell-slash"></i>
@@ -70,11 +63,11 @@ const formatDateTime = (datetime: string): string => {
       </div>
 
       <div
-        v-for="notification in unreadNotifications"
+        v-for="notification in displayNotifications"
         :key="notification.id"
         class="notification-item"
-        :class="{ 'warning': notification.type === 'warning' }"
-        @click="handleNotificationClick(notification.id, notification.datetime)"
+        :class="{ 'warning': notification.type === 'warning', 'read': notification.read }"
+        @click="handleNotificationClick(notification.id)"
       >
         <div class="notification-content">
           <div class="notification-date">
@@ -107,6 +100,24 @@ const formatDateTime = (datetime: string): string => {
   padding: 1.5rem 2rem;
   border-radius: 12px 12px 0 0;
   text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .notifications-header h2 {
@@ -124,6 +135,16 @@ const formatDateTime = (datetime: string): string => {
   min-height: 400px;
   max-height: 600px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-item {
+  order: 0;
+}
+
+.notification-item.read {
+  order: 1;
 }
 
 .notifications-list::-webkit-scrollbar {
@@ -182,6 +203,14 @@ const formatDateTime = (datetime: string): string => {
 
 .notification-item.warning:hover {
   background: rgba(231, 76, 60, 0.15);
+}
+
+.notification-item.read {
+  opacity: 0.6;
+}
+
+.notification-item.read:hover {
+  opacity: 0.8;
 }
 
 .notification-content {

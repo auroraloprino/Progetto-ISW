@@ -30,7 +30,9 @@
       </div>
       
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
+      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account
+        <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
+      </RouterLink>
       
     </div>
   </nav>
@@ -102,9 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
+import { useNotifications } from '../composables/useNotifications';
 import type { Board } from '../types/boards';
 
 const router = useRouter();
@@ -116,6 +119,21 @@ const {
   deleteBoard,
   updateBoardTitle
 } = useBoards();
+
+const { notifications } = useNotifications();
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+});
 
 const dropdownOpen = ref(false);
 const boardTitles = reactive<Record<string, string>>({});
@@ -136,6 +154,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  document.body.classList.remove('dashboard-page');
 });
 
 onUnmounted(() => {
@@ -473,5 +492,24 @@ const toggleSearch = () => {
 .page-content h1 {
   margin-bottom: 1rem !important;
   margin-top: 0 !important;
+}
+
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
 }
 </style>
