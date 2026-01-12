@@ -25,6 +25,14 @@
 [data-theme="dark"] .week-hour-event,
 [data-theme="dark"] .all-day-event,
 [data-theme="dark"] .hour-event {
+  color: white !important;
+}
+
+[data-theme="dark"] .calendar-event[style*="background: #0d4853"],
+[data-theme="dark"] .week-all-day-event[style*="background: #0d4853"],
+[data-theme="dark"] .week-hour-event[style*="background: #0d4853"],
+[data-theme="dark"] .all-day-event[style*="background: #0d4853"],
+[data-theme="dark"] .hour-event[style*="background: #0d4853"] {
   background: #64b5f6 !important;
   color: #1a1a1a !important;
 }
@@ -33,7 +41,7 @@
   background: #64b5f6 !important;
 }
 
-[data-theme="dark"] .event-color {
+[data-theme="dark"] .event-color[style*="background: #0d4853"] {
   background: #64b5f6 !important;
 }
 
