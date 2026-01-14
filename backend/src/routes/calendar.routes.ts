@@ -11,7 +11,11 @@ calendarRouter.get("/tags", async (req: AuthRequest, res) => {
 
   const list = await tags
     .find({
-      $or: [{ ownerId: uid }, { "sharedWith.userId": uid }],
+      $or: [
+        { ownerId: uid },
+        { "sharedWith.userId": uid },
+        { sharedWith: uid }
+      ],
     })
     .toArray();
 
@@ -75,7 +79,9 @@ calendarRouter.put("/tags/:id", async (req: AuthRequest, res) => {
   
   const uid = new ObjectId(req.userId);
   const isOwner = tag.ownerId.equals(uid);
-  const member = (tag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
+  const member = (tag.sharedWith ?? []).find((m: any) => 
+    m.userId ? m.userId.equals(uid) : m.equals(uid)
+  );
   const role = isOwner ? "owner" : member?.role;
   
   if (role !== "owner" && role !== "editor") {
@@ -162,6 +168,23 @@ calendarRouter.post("/tags/:id/share", async (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
+calendarRouter.post("/tags/:id/leave", async (req: AuthRequest, res) => {
+  const tagId = req.params.id;
+  const uid = new ObjectId(req.userId);
+
+  const tags = dbService.getDb().collection("tags");
+  const tag = await tags.findOne({ _id: new ObjectId(tagId) });
+
+  if (!tag) return res.status(404).json({ error: "Tag not found" });
+
+  await tags.updateOne(
+    { _id: new ObjectId(tagId) },
+    { $pull: { sharedWith: { userId: uid } } as any }
+  );
+
+  res.json({ ok: true });
+});
+
 calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) => {
   const tagId = req.params.id;
   const userIdToRemove = req.params.userId;
@@ -176,7 +199,7 @@ calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) =
 
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
-    { $pull: { sharedWith: { userId: new ObjectId(userIdToRemove) } } } as any
+    { $pull: { sharedWith: { userId: new ObjectId(userIdToRemove) } } as any }
   );
 
   res.json({ ok: true });
@@ -188,7 +211,12 @@ calendarRouter.get("/events", async (req: AuthRequest, res) => {
   const tags = dbService.getDb().collection("tags");
 
   const sharedTags = await tags
-    .find({ "sharedWith.userId": uid })
+    .find({
+      $or: [
+        { "sharedWith.userId": uid },
+        { sharedWith: uid }
+      ]
+    })
     .toArray();
   const sharedTagIds = sharedTags.map(t => t._id);
 

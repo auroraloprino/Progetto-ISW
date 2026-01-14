@@ -192,6 +192,20 @@ export function useCalendar() {
     }
   }
 
+  const leaveTag = async (id: string) => {
+    try {
+      const success = await calendarAPI.leaveTag(id)
+      if (success) {
+        tags.value = tags.value.filter(t => t.id !== id)
+      }
+      return success
+    } catch (err) {
+      error.value = 'Failed to leave tag'
+      console.error('Error leaving tag:', err)
+      throw err
+    }
+  }
+
   const getTagById = (id?: string): Tag | undefined => {
     if (!id) return undefined
     return tags.value.find(t => t.id === id)
@@ -227,6 +241,7 @@ export function useCalendar() {
     updateTag,
     deleteTag,
     toggleTagVisibility,
+    leaveTag,
     
     createEvent,
     updateEvent,

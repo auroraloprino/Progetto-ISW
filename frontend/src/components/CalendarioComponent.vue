@@ -45,6 +45,9 @@
               <button v-if="isTagOwner(tag)" @click="deleteTag(tag.id)" class="delete-tag-btn">
                 <i class="fas fa-trash"></i>
               </button>
+              <button v-else @click="handleLeaveTag(tag.id)" class="leave-tag-btn">
+                <i class="fas fa-sign-out-alt"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -395,6 +398,7 @@ const {
   updateTag,
   deleteTag: deleteTagAPI,
   toggleTagVisibility,
+  leaveTag,
   createEvent,
   updateEvent,
   deleteEvent: deleteEventAPI,
@@ -992,6 +996,16 @@ const handleShareSuccess = () => {
 
 const isTagOwner = (tag: Tag) => tag.ownerId === userId.value
 
+const handleLeaveTag = (tagId: string) => {
+  showConfirm('Abbandona tag', 'Sei sicuro di voler abbandonare questo tag condiviso?', async () => {
+    try {
+      await leaveTag(tagId)
+    } catch (error) {
+      console.error('Error leaving tag:', error)
+    }
+  })
+}
+
 watch(() => eventForm.value.allDay, (newVal) => {
   setTimeout(() => {
     if (newVal) {
@@ -1132,6 +1146,29 @@ onUnmounted(() => {
 }
 
 .share-tag-btn i {
+  color: white;
+  font-size: 11px;
+}
+
+.leave-tag-btn {
+  background: rgba(243, 156, 18, 0.8);
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.leave-tag-btn:hover {
+  background: rgba(243, 156, 18, 1);
+}
+
+.leave-tag-btn i {
   color: white;
   font-size: 11px;
 }

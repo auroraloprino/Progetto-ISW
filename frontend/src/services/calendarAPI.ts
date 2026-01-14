@@ -22,6 +22,11 @@ export const calendarAPI = {
     return true
   },
 
+  async leaveTag(id: string | number): Promise<boolean> {
+    await api.post(`/calendar/tags/${id}/leave`)
+    return true
+  },
+
   async getEvents(): Promise<{ events: { [key: string]: Event[] }, nextId: number }> {
     const { data } = await api.get('/calendar/events')
     const eventsByDate: { [key: string]: Event[] } = {}
