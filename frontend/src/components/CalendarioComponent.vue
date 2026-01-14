@@ -42,7 +42,7 @@
               <button @click="openShareModal(tag.id)" class="share-tag-btn">
                 <i class="fas fa-share-alt"></i>
               </button>
-              <button @click="deleteTag(tag.id)" class="delete-tag-btn">
+              <button v-if="isTagOwner(tag)" @click="deleteTag(tag.id)" class="delete-tag-btn">
                 <i class="fas fa-trash"></i>
               </button>
             </div>
@@ -368,6 +368,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
 import { useCalendar } from '../composables/useCalendar'
+import { currentUser } from '../auth/auth'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 import ShareModal from './ShareModal.vue'
 
@@ -382,6 +383,7 @@ const displayMonth = ref(currentDate.getMonth())
 const displayYear = ref(currentDate.getFullYear())
 const currentView = ref('month')
 const selectedDay = ref(currentDate.getDate())
+const userId = ref<string | null>(null)
 
 const { notifications } = useNotifications()
 const {
@@ -988,6 +990,8 @@ const handleShareSuccess = () => {
   console.log('Tag condiviso con successo')
 }
 
+const isTagOwner = (tag: Tag) => tag.ownerId === userId.value
+
 watch(() => eventForm.value.allDay, (newVal) => {
   setTimeout(() => {
     if (newVal) {
@@ -1073,6 +1077,9 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => {
+  currentUser().then(user => {
+    userId.value = user?.id || null
+  })
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
   document.body.classList.add('no-scroll')

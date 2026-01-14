@@ -24,7 +24,13 @@ calendarRouter.get("/tags", async (req: AuthRequest, res) => {
         color: t.color,
         visible: isOwner ? (t.visible ?? true) : true,
         ownerId: t.ownerId.toString(),
-        sharedWith: (t.sharedWith ?? []).map((m: any) => ({ userId: m.userId.toString(), role: m.role })),
+        sharedWith: (t.sharedWith ?? []).map((m: any) => {
+          if (m.userId) {
+            return { userId: m.userId.toString(), role: m.role };
+          } else {
+            return { userId: m.toString(), role: "editor" };
+          }
+        }),
       };
     })
   );
@@ -108,6 +114,7 @@ calendarRouter.put("/tags/:id", async (req: AuthRequest, res) => {
 
 calendarRouter.delete("/tags/:id", async (req: AuthRequest, res) => {
   const tags = dbService.getDb().collection("tags");
+  const events = dbService.getDb().collection("events");
   const tagId = new ObjectId(req.params.id);
   const uid = new ObjectId(req.userId);
 
@@ -116,6 +123,11 @@ calendarRouter.delete("/tags/:id", async (req: AuthRequest, res) => {
   if (!tag.ownerId.equals(uid)) {
     return res.status(403).json({ error: "Only owner can delete tag" });
   }
+
+  await events.updateMany(
+    { tag: tagId },
+    { $set: { tag: null } }
+  );
 
   await tags.deleteOne({ _id: tagId });
   res.json({ ok: true });
@@ -188,8 +200,7 @@ calendarRouter.get("/events", async (req: AuthRequest, res) => {
   const list = await events.find({
     $or: [
       { userId: uid },
-      { tag: { $in: sharedTagIds } },
-      { tag: { $in: ownedTagIds } }
+      { tag: { $in: [...sharedTagIds, ...ownedTagIds] } }
     ]
   }).toArray();
 
@@ -258,8 +269,10 @@ calendarRouter.put("/events/:id", async (req: AuthRequest, res) => {
     const eventTag = await tags.findOne({ _id: event.tag });
     if (eventTag) {
       const isOwner = eventTag.ownerId.equals(uid);
-      const member = (eventTag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
-      const role = isOwner ? "owner" : member?.role;
+      const member = (eventTag.sharedWith ?? []).find((m: any) => 
+        m.userId ? m.userId.equals(uid) : m.equals(uid)
+      );
+      const role = isOwner ? "owner" : (member?.role || (member ? "editor" : null));
       canEdit = role === "owner" || role === "editor";
     }
   }
@@ -269,7 +282,7 @@ calendarRouter.put("/events/:id", async (req: AuthRequest, res) => {
   }
 
   const update: any = {};
-  if (title) update.title = title;
+  if (title !== undefined) update.title = title;
   if (datetime) update.datetime = datetime;
   if (endDatetime !== undefined) update.endDatetime = endDatetime;
   if (type) update.type = type;
@@ -309,8 +322,10 @@ calendarRouter.delete("/events/:id", async (req: AuthRequest, res) => {
     const eventTag = await tags.findOne({ _id: event.tag });
     if (eventTag) {
       const isOwner = eventTag.ownerId.equals(uid);
-      const member = (eventTag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
-      const role = isOwner ? "owner" : member?.role;
+      const member = (eventTag.sharedWith ?? []).find((m: any) => 
+        m.userId ? m.userId.equals(uid) : m.equals(uid)
+      );
+      const role = isOwner ? "owner" : (member?.role || (member ? "editor" : null));
       canEdit = role === "owner" || role === "editor";
     }
   }

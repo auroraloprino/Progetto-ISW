@@ -16,20 +16,14 @@ export interface Column {
 }
 
 export interface Board {
+  id: string;
   slug: string;
   title: string;
+  ownerId: string;
   editing?: boolean;
   columns: Column[];
 }
 
 export interface BoardsState {
   boards: Board[];
-}
-
-export interface Board {
-  id: string;
-  slug: string;
-  title: string;
-  editing?: boolean;
-  columns: Column[];
 }

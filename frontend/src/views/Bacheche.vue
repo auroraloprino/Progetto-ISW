@@ -77,6 +77,7 @@
         @click="openBoard(board.slug)"
       >
         <button
+          v-if="isOwner(board)"
           class="delete-btn"
           @click.stop="handleDeleteBoard(board)"
           title="Elimina bacheca"
@@ -108,6 +109,7 @@ import { ref, nextTick, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
 import { useNotifications } from '../composables/useNotifications';
+import { currentUser } from '../auth/auth';
 import type { Board } from '../types/boards';
 
 const router = useRouter();
@@ -122,6 +124,7 @@ const {
 } = useBoards();
 
 const { notifications } = useNotifications();
+const userId = ref<string | null>(null);
 
 const todayEventsCount = computed(() => {
   return notifications.value.filter(n => {
@@ -146,6 +149,8 @@ const showSearch = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
+const isOwner = (board: Board) => board.ownerId === userId.value;
+
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   if (!target.closest('.search-container')) {
@@ -153,8 +158,9 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
+onMounted(async () => {
+  const user = await currentUser();
+  userId.value = user?.id || null;
   document.body.classList.remove('dashboard-page');
 });
 
@@ -162,6 +168,8 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 onMounted(async () => {
+  const user = await currentUser();
+  userId.value = user?.id || null;
   await loadBoards();
   document.addEventListener('click', handleClickOutside);
 });
