@@ -26,7 +26,7 @@
     </section>
 
     <aside class="panel panel-account">
-      <div class="account-card">
+      <div class="account-card" @click.stop>
         <!-- TUTTO il tuo contenuto account rimane IDENTICO -->
         <div class="profile-header">
           <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
@@ -49,42 +49,55 @@
           </button>
         </div>
 
-        <div class="username-bar">
-          {{ user?.username || user?.email }}
+        <!-- Username + Gear -->
+<div class="username-row">
+  <div class="username-bar">
+    {{ user?.username || user?.email }}
+  </div>
+
+  <button class="username-gear" @click="toggleSettings" title="Impostazioni account">
+    ⚙️
+  </button>
+</div>
+
+<!-- Dropdown sotto username -->
+<div v-if="settingsOpen" class="settings-dropdown" @click.stop>
+  <!-- Modifica dati -->
+  <button class="action-btn" @click="showEdit = !showEdit">
+    Modifica username / email
+    <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+  </button>
+
+  <div v-if="showEdit" class="dropdown">
+    <div class="edit-block">
+      <input v-model="newUsername" placeholder="Nuovo username" />
+      <button class="dropdown-action-btn" @click="changeUsername">Salva username</button>
+    </div>
+
+    <div class="edit-block">
+      <input v-model="newEmail" type="email" placeholder="Nuova email" />
+      <button class="dropdown-action-btn" @click="changeEmail">Salva email</button>
+    </div>
+  </div>
+
+  <!-- Password -->
+  <button class="action-btn" @click="showPassword = !showPassword">
+    Cambia password
+    <i class="fas" :class="showPassword ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+  </button>
+
+  <div v-if="showPassword" class="dropdown">
+    <input v-model="oldPassword" type="password" placeholder="Password attuale" />
+    <input v-model="newPassword" type="password" placeholder="Nuova password" />
+    <button class="dropdown-action-btn" @click="changePasswordHandler">Aggiorna password</button>
+  </div>
+
+          <!-- Elimina account -->
+          <button class="delete-account-btn" @click="deleteAccountAndData"> ELIMINA ACCOUNT </button>
         </div>
 
-        <div class="account-actions">
-          <button class="action-btn" @click="showEdit = !showEdit">
-            Modifica dati account
-            <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-          </button>
-
-          <div v-if="showEdit" class="dropdown">
-            <div class="edit-block">
-              <input v-model="newUsername" placeholder="Nuovo username" />
-              <button class="dropdown-action-btn" @click="changeUsername">Salva username</button>
-            </div>
-
-            <div class="edit-block">
-              <input v-model="newEmail" type="email" placeholder="Nuova email" />
-              <button class="dropdown-action-btn" @click="changeEmail">Salva email</button>
-            </div>
-          </div>
-
-          <button class="action-btn" @click="showPassword = !showPassword">
-            Cambia password
-            <i class="fas" :class="showPassword ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-          </button>
-
-          <div v-if="showPassword" class="dropdown">
-            <input v-model="oldPassword" type="password" placeholder="Password attuale" />
-            <input v-model="newPassword" type="password" placeholder="Nuova password" />
-            <button class="dropdown-action-btn" @click="changePasswordHandler">Aggiorna password</button>
-          </div>
-        </div>
-
+        <!-- Logout resta fuori (come prima) -->
         <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-        <button class="delete-account-btn" @click="deleteAccountAndData">ELIMINA ACCOUNT</button>
       </div>
     </aside>
   </div>
@@ -101,6 +114,7 @@ import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
 import { useNotifications } from '../composables/useNotifications'
+import { onBeforeUnmount } from 'vue'
 
 
 const router = useRouter()
@@ -116,6 +130,33 @@ const newPassword = ref("")
 const showEdit = ref(false)
 const showPassword = ref(false)
 const user = ref<User | null>(null)
+const settingsOpen = ref(false)
+
+function toggleSettings() {
+  settingsOpen.value = !settingsOpen.value
+  // se chiudo, chiudo anche le sotto-tendine
+  if (!settingsOpen.value) {
+    showEdit.value = false
+    showPassword.value = false
+  }
+}
+
+function closeSettings() {
+  settingsOpen.value = false
+  showEdit.value = false
+  showPassword.value = false
+}
+
+// click fuori per chiudere
+const onDocClick = () => closeSettings()
+
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick)
+})
 
 onMounted(async () => {
   currentThemeMode.value = getCurrentTheme()
@@ -433,5 +474,55 @@ async function deleteAccountAndData() {
   .account-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.username-row {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+/* stessa “barra” ma ora è flessibile */
+.username-bar {
+  flex: 1;
+  margin-bottom: 0; /* prima era 1.5rem */
+}
+
+/* bottone ingranaggio con stesso sfondo della username-bar */
+.username-gear {
+  background: #6f8f82; /* stesso della username-bar */
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 0 14px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+}
+
+.username-gear:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* tendina sotto username */
+.settings-dropdown {
+  width: 100%;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(13, 72, 83, 0.15);
+  border: 1px solid rgba(13, 72, 83, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 </style>
