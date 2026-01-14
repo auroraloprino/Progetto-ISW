@@ -6,6 +6,7 @@ import { boardsRouter } from "./routes/boards.routes";
 import { calendarRouter } from "./routes/calendar.routes";
 import { invitesRouter } from "./routes/invites.routes";
 import { requireAuth } from "./middleware/requireAuth";
+import { transactionsRouter } from "./routes/transactions.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardsRouter);
 app.use("/api/calendar", requireAuth, calendarRouter);
 app.use("/api/invites", requireAuth, invitesRouter);
+app.use("/api/transactions", requireAuth, transactionsRouter);
 
 async function startServer() {
   try {
