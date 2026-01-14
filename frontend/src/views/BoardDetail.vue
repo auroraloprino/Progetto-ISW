@@ -151,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
 import ShareModal from '../components/ShareModal.vue';
@@ -368,10 +368,22 @@ const handleShareSuccess = () => {
   console.log('Bacheca condivisa con successo');
 };
 
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   await loadBoards();
   if (!board.value) {
     router.push('/bacheche');
+  }
+  
+  refreshInterval = setInterval(() => {
+    loadBoards();
+  }, 5000);
+});
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
   }
 });
 </script>
