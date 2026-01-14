@@ -11,27 +11,20 @@ calendarRouter.get("/tags", async (req: AuthRequest, res) => {
 
   const list = await tags
     .find({
-      $or: [{ ownerId: uid }, { "sharedWith.userId": uid }, { sharedWith: uid }],
+      $or: [{ ownerId: uid }, { "sharedWith.userId": uid }],
     })
     .toArray();
 
   res.json(
     list.map((t: any) => {
       const isOwner = t.ownerId.equals(uid);
-      const sharedWith = (t.sharedWith ?? []).map((m: any) => {
-        if (m.userId) {
-          return { userId: m.userId.toString(), role: m.role };
-        } else {
-          return { userId: m.toString(), role: "editor" };
-        }
-      });
       return {
         id: t._id.toString(),
         name: t.name,
         color: t.color,
         visible: isOwner ? (t.visible ?? true) : true,
         ownerId: t.ownerId.toString(),
-        sharedWith,
+        sharedWith: (t.sharedWith ?? []).map((m: any) => ({ userId: m.userId.toString(), role: m.role })),
       };
     })
   );
@@ -73,14 +66,25 @@ calendarRouter.put("/tags/:id", async (req: AuthRequest, res) => {
   const tag = await tags.findOne({ _id: new ObjectId(tagId) });
 
   if (!tag) return res.status(404).json({ error: "Tag not found" });
-  if (!tag.ownerId.equals(new ObjectId(req.userId))) {
-    return res.status(403).json({ error: "Only owner can update tag" });
+  
+  const uid = new ObjectId(req.userId);
+  const isOwner = tag.ownerId.equals(uid);
+  const member = (tag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
+  const role = isOwner ? "owner" : member?.role;
+  
+  if (role !== "owner" && role !== "editor") {
+    return res.status(403).json({ error: "Only owner and editors can update tag" });
   }
 
   const update: any = {};
   if (name) update.name = name;
   if (color) update.color = color;
-  if (typeof visible === "boolean") update.visible = visible;
+  if (typeof visible === "boolean") {
+    if (!isOwner) {
+      return res.status(403).json({ error: "Only owner can change visibility" });
+    }
+    update.visible = visible;
+  }
 
   await tags.updateOne({ _id: new ObjectId(tagId) }, { $set: update });
 
@@ -92,7 +96,13 @@ calendarRouter.put("/tags/:id", async (req: AuthRequest, res) => {
     color: updated!.color,
     visible: updated!.visible,
     ownerId: updated!.ownerId.toString(),
-    sharedWith: (updated!.sharedWith ?? []).map((id: ObjectId) => id.toString()),
+    sharedWith: (updated!.sharedWith ?? []).map((m: any) => {
+      if (m.userId) {
+        return { userId: m.userId.toString(), role: m.role };
+      } else {
+        return { userId: m.toString(), role: "editor" };
+      }
+    }),
   });
 });
 
@@ -166,7 +176,7 @@ calendarRouter.get("/events", async (req: AuthRequest, res) => {
   const tags = dbService.getDb().collection("tags");
 
   const sharedTags = await tags
-    .find({ $or: [{ "sharedWith.userId": uid }, { sharedWith: uid }] })
+    .find({ "sharedWith.userId": uid })
     .toArray();
   const sharedTagIds = sharedTags.map(t => t._id);
 
