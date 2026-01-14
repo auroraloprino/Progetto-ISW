@@ -137,6 +137,114 @@ authRouter.put("/password", requireAuth, async (req: AuthRequest, res) => {
 
   res.json({ ok: true });
 });
+
+authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
+  const db = dbService.getDb();
+  const userId = new ObjectId(req.userId);
+  
+  // Get boards
+  const boards = db.collection("boards");
+  const userBoards = await boards.find({
+    $or: [
+      { ownerId: userId },
+      { "members.userId": userId }
+    ]
+  }).toArray();
+  
+  // Get tags
+  const tags = db.collection("tags");
+  const userTags = await tags.find({
+    $or: [
+      { ownerId: userId },
+      { "sharedWith.userId": userId },
+      { sharedWith: userId }
+    ]
+  }).toArray();
+  
+  // Collect all user IDs to fetch
+  const userIds = new Set<string>();
+  
+  userBoards.forEach((board: any) => {
+    if (board.ownerId) userIds.add(board.ownerId.toString());
+    (board.members ?? []).forEach((m: any) => {
+      if (m.userId) userIds.add(m.userId.toString());
+    });
+  });
+  
+  userTags.forEach((tag: any) => {
+    if (tag.ownerId) userIds.add(tag.ownerId.toString());
+    (tag.sharedWith ?? []).forEach((m: any) => {
+      if (m.userId) {
+        userIds.add(m.userId.toString());
+      } else if (m instanceof ObjectId) {
+        userIds.add(m.toString());
+      }
+    });
+  });
+  
+  // Fetch user details
+  const users = db.collection("users");
+  const userList = await users.find({
+    _id: { $in: Array.from(userIds).map(id => new ObjectId(id)) }
+  }).toArray();
+  
+  const userMap = new Map(
+    userList.map((u: any) => [u._id.toString(), { username: u.username, email: u.email }])
+  );
+  
+  // Format boards response
+  const boardsResponse = userBoards.map((b: any) => {
+    const isOwner = b.ownerId.equals(userId);
+    const members = (b.members ?? [])
+      .filter((m: any) => !m.userId.equals(userId))
+      .map((m: any) => ({
+        userId: m.userId.toString(),
+        role: m.role,
+        username: userMap.get(m.userId.toString())?.username || "Unknown",
+        email: userMap.get(m.userId.toString())?.email || ""
+      }));
+    
+    return {
+      id: b._id.toString(),
+      title: b.title,
+      slug: b.slug,
+      isOwner,
+      members
+    };
+  });
+  
+  // Format tags response
+  const tagsResponse = userTags.map((t: any) => {
+    const isOwner = t.ownerId.equals(userId);
+    const sharedWith = (t.sharedWith ?? [])
+      .map((m: any) => {
+        const uid = m.userId ? m.userId : m;
+        if (uid.equals(userId)) return null;
+        
+        return {
+          userId: uid.toString(),
+          role: m.role || "editor",
+          username: userMap.get(uid.toString())?.username || "Unknown",
+          email: userMap.get(uid.toString())?.email || ""
+        };
+      })
+      .filter((m: any) => m !== null);
+    
+    return {
+      id: t._id.toString(),
+      name: t.name,
+      color: t.color,
+      isOwner,
+      sharedWith
+    };
+  });
+  
+  res.json({
+    boards: boardsResponse,
+    tags: tagsResponse
+  });
+});
+
 authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
   const db = dbService.getDb();
   const userId = new ObjectId(req.userId);
@@ -146,12 +254,11 @@ authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
 
   await boards.updateMany(
     { "members.userId": userId },
-    { $pull: { members: { userId } } }
+    { $pull: { members: { userId } } } as any
   );
 
   const transactions = db.collection("transactions");
   await transactions.deleteMany({ userId });
-
 
   const users = db.collection("users");
   const result = await users.deleteOne({ _id: userId });
@@ -159,7 +266,6 @@ authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
   if (result.deletedCount === 0) {
     return res.status(404).json({ error: "User not found" });
   }
-
 
   res.json({ ok: true });
 });

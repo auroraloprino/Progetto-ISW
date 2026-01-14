@@ -15,6 +15,7 @@
     <div class="account-content">
       <NotificationsArea />
       <InvitesComponent />
+      <SharedItemsComponent />
 
       <div class="account-card">
         <div class="profile-header">
@@ -93,6 +94,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import SharedItemsComponent from '../components/SharedItemsComponent.vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
 import { currentUser, logout, updateUser, changePassword, deleteAccount, type User } from '../auth/auth'
