@@ -201,8 +201,20 @@ export function useCalendar() {
     await Promise.all([loadTags(), loadEvents()])
   }
 
+  let refreshInterval: ReturnType<typeof setInterval> | null = null
+
   onMounted(() => {
     initialize()
+    refreshInterval = setInterval(() => {
+      loadTags()
+      loadEvents()
+    }, 5000)
+  })
+
+  onUnmounted(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval)
+    }
   })
 
   return {

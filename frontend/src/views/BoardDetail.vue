@@ -83,11 +83,19 @@
           </button>
         </div>
 
-        <div class="tasks-container">
+        <button class="btn-add-task" @click="handleAddTask(column.id)">
+          AGGIUNGI TASK
+        </button>
+
+        <div class="tasks-container" @dragover.prevent="handleDragOver" @drop="handleDrop($event, column.id)">
           <div 
-            v-for="task in column.tasks" 
+            v-for="(task, index) in column.tasks" 
             :key="task.id"
             :class="['task-card', { completed: task.completed }]"
+            draggable="true"
+            @dragstart="handleDragStart($event, task, column.id)"
+            @dragend="handleDragEnd"
+            @dragover.prevent="handleTaskDragOver($event, index)"
           >
             <button 
               class="task-checkbox"
@@ -117,10 +125,6 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
-
-          <button class="btn-add-task" @click="handleAddTask(column.id)">
-            AGGIUNGI TASK
-          </button>
         </div>
       </div>
       
@@ -311,6 +315,7 @@ const toggleTaskCompleteLocal = async (columnId: string, taskId: string) => {
 
 // Drag and drop handlers
 let draggedTask: { task: any; sourceColumnId: string } | null = null;
+let dragOverIndex = ref<number>(-1);
 
 const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
   draggedTask = { task, sourceColumnId: columnId };
@@ -321,6 +326,16 @@ const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
 
 const handleDragEnd = () => {
   draggedTask = null;
+  dragOverIndex.value = -1;
+};
+
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault();
+};
+
+const handleTaskDragOver = (event: DragEvent, index: number) => {
+  event.preventDefault();
+  dragOverIndex.value = index;
 };
 
 const handleDrop = async (event: DragEvent, targetColumnId: string) => {
@@ -328,15 +343,20 @@ const handleDrop = async (event: DragEvent, targetColumnId: string) => {
   if (!draggedTask || !board.value) return;
 
   const { task, sourceColumnId } = draggedTask;
+  const targetColumn = board.value.columns.find((c) => c.id === targetColumnId);
+  if (!targetColumn) return;
 
-  if (sourceColumnId !== targetColumnId) {
-    const targetColumn = board.value.columns.find((c) => c.id === targetColumnId);
-    const newOrder = targetColumn?.tasks.length || 0;
-
-    await moveTask(board.value.id, task.id, sourceColumnId, targetColumnId, newOrder);
+  let newOrder = dragOverIndex.value >= 0 ? dragOverIndex.value : targetColumn.tasks.length;
+  
+  if (sourceColumnId === targetColumnId) {
+    const currentIndex = targetColumn.tasks.findIndex(t => t.id === task.id);
+    if (currentIndex < newOrder) newOrder--;
   }
 
+  await moveTask(board.value.id, task.id, sourceColumnId, targetColumnId, newOrder);
+  
   draggedTask = null;
+  dragOverIndex.value = -1;
 };
 
 const openShareModal = () => {
@@ -632,6 +652,7 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
+  min-height: 50px;
 }
 
 .task-card {
@@ -645,6 +666,7 @@ onMounted(async () => {
   position: relative;
   border: 1px solid rgba(13, 72, 83, 0.2);
   box-shadow: 0 1px 3px rgba(13, 72, 83, 0.1);
+  cursor: move;
 }
 
 .task-card:hover {
@@ -682,6 +704,7 @@ onMounted(async () => {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .task-checkbox.checked {
@@ -693,10 +716,11 @@ onMounted(async () => {
   flex: 1;
   color: var(--primary-color);
   font-weight: 500;
-  cursor: pointer;
+  cursor: move;
   padding: 0.25rem;
   border-radius: 4px;
   transition: background 0.2s ease;
+  pointer-events: none;
 }
 
 .task-card.completed .task-text {
@@ -733,6 +757,7 @@ onMounted(async () => {
   opacity: 0;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .task-card:hover .delete-task-btn {
@@ -759,7 +784,8 @@ onMounted(async () => {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
 }
 
 .btn-add-task:hover {

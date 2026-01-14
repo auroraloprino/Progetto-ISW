@@ -17,23 +17,29 @@
       <InvitesComponent />
 
       <div class="account-card">
-        <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
-          <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
-          <i v-else class="fas fa-user-circle"></i>
-          <div class="upload-overlay">
-            <i class="fas fa-camera"></i>
+        <div class="profile-header">
+          <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
+            <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
+            <i v-else class="fas fa-user-circle"></i>
+            <div class="upload-overlay">
+              <i class="fas fa-camera"></i>
+            </div>
+            <input 
+              ref="fileInput" 
+              type="file" 
+              accept="image/*" 
+              @change="handleImageUpload" 
+              style="display: none"
+            />
           </div>
-          <input 
-            ref="fileInput" 
-            type="file" 
-            accept="image/*" 
-            @change="handleImageUpload" 
-            style="display: none"
-          />
+          
+          <button @click="handleToggleTheme" class="theme-toggle-btn">
+            {{ currentThemeMode === 'dark' ? '☼' : '☾' }}
+          </button>
         </div>
 
         <div class="username-bar">
-          {{ user?.email }}
+          {{ user?.username || user?.email }}
         </div>
 
         
@@ -76,14 +82,8 @@
   </div>
 
 </div>
-        <div class="theme-controls">
-          <button @click="handleToggleTheme" class="theme-btn">
-            {{ currentThemeMode === 'dark' ? 'Modalità Chiara' : 'Modalità Scura' }}
-          </button>
-        </div>
-        <div class="account-actions">
-          <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-        </div>
+
+        <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
       </div>
     </div>
   </div>
@@ -291,6 +291,45 @@ async function changePasswordHandler() {
 .dropdown-action-btn:hover {
   background: rgba(13,72,83,1);
   transform: scale(1.02);
+}
+
+.profile-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.theme-toggle-btn {
+  background: rgba(13,72,83,0.8);
+  border: 2px solid var(--primary-color);
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: -20px;
+  bottom: 0;
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(13,72,83,1);
+  transform: scale(1.1);
+}
+
+.logout-btn {
+  margin-top: 1.5rem;
 }
 
 </style>

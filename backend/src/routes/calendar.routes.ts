@@ -152,8 +152,19 @@ calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) =
 calendarRouter.get("/events", async (req: AuthRequest, res) => {
   const uid = new ObjectId(req.userId);
   const events = dbService.getDb().collection("events");
+  const tags = dbService.getDb().collection("tags");
 
-  const list = await events.find({ userId: uid }).toArray();
+  const sharedTags = await tags
+    .find({ sharedWith: uid })
+    .toArray();
+  const sharedTagIds = sharedTags.map(t => t._id);
+
+  const list = await events.find({
+    $or: [
+      { userId: uid },
+      { tag: { $in: sharedTagIds } }
+    ]
+  }).toArray();
 
   res.json(
     list.map((e: any) => ({
