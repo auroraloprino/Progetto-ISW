@@ -96,6 +96,7 @@
             @dragstart="handleDragStart($event, task, column.id)"
             @dragend="handleDragEnd"
             @dragover.prevent="handleTaskDragOver($event, index)"
+            @dblclick.stop="startEditTask(task)"
           >
             <button 
               class="task-checkbox"
@@ -113,7 +114,7 @@
               class="task-input"
               @click.stop
             />
-            <span v-else @dblclick.stop="startEditTask(task)" class="task-text">
+            <span v-else class="task-text">
               {{ task.title }}
             </span>
             
