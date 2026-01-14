@@ -84,7 +84,9 @@
 </div>
 
         <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
+      <button class="delete-account-btn" @click="deleteAccountAndData"> ELIMINA ACCOUNT </button>
       </div>
+
     </div>
   </div>
 </template>
@@ -93,7 +95,7 @@
 import { ref, onMounted, computed } from 'vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
-import { currentUser, logout, updateUser, changePassword, type User } from '../auth/auth'
+import { currentUser, logout, updateUser, changePassword, deleteAccount, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
@@ -189,6 +191,21 @@ async function changePasswordHandler() {
   } catch (e) {
     console.error(e)
     alert("Password attuale errata o errore server")
+  }
+}
+
+async function deleteAccountAndData() {
+  const ok = confirm(
+    "Sei sicuro di voler eliminare l'account?\n\nVerranno cancellate bacheche, budget e tutti i tuoi dati in modo permanente."
+  );
+  if (!ok) return;
+
+  try {
+    await deleteAccount();
+    router.push("/login");
+  } catch (e) {
+    console.error(e);
+    alert("Errore durante l'eliminazione account");
   }
 }
 </script>
@@ -319,4 +336,19 @@ async function changePasswordHandler() {
   margin-top: 1.5rem;
 }
 
+.delete-account-btn{
+  margin-top: 10px;
+  padding: 0.8rem 2.5rem;
+  border-radius: 12px;
+  border: none;
+  background: rgba(231, 76, 60, 0.9);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.delete-account-btn:hover{
+  background: rgba(231, 76, 60, 1);
+  transform: scale(1.02);
+}
 </style>

@@ -137,3 +137,29 @@ authRouter.put("/password", requireAuth, async (req: AuthRequest, res) => {
 
   res.json({ ok: true });
 });
+authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
+  const db = dbService.getDb();
+  const userId = new ObjectId(req.userId);
+
+  const boards = db.collection("boards");
+  await boards.deleteMany({ ownerId: userId });
+
+  await boards.updateMany(
+    { "members.userId": userId },
+    { $pull: { members: { userId } } }
+  );
+
+  const transactions = db.collection("transactions");
+  await transactions.deleteMany({ userId });
+
+
+  const users = db.collection("users");
+  const result = await users.deleteOne({ _id: userId });
+
+  if (result.deletedCount === 0) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+
+  res.json({ ok: true });
+});
