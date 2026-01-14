@@ -552,7 +552,7 @@ const todayEvents = computed(() => {
       
       if ((eventStart <= endOfToday && eventEnd >= startOfToday)) {
         const tag = tags.value.find(t => t.id === event.tag)
-        if (!event.tag || (tag && tag.visible)) {
+        if (!event.tag || !tag || tag.visible) {
           todayEventsList.push({
             ...event,
             displayTitle: getEventDisplayTitle(event, todayDateKey),
@@ -591,7 +591,7 @@ const weekEvents = computed(() => {
         
         if ((eventStart <= endOfTarget && eventEnd >= startOfTarget)) {
           const tag = tags.value.find(t => t.id === event.tag)
-          if (!event.tag || (tag && tag.visible)) {
+          if (!event.tag || !tag || tag.visible) {
             const eventTime = event.allDay ? 'Tutto il giorno' : eventStart.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
             
             const monthIndex = targetDate.getMonth();

@@ -16,14 +16,17 @@ calendarRouter.get("/tags", async (req: AuthRequest, res) => {
     .toArray();
 
   res.json(
-    list.map((t: any) => ({
-      id: t._id.toString(),
-      name: t.name,
-      color: t.color,
-      visible: t.visible ?? true,
-      ownerId: t.ownerId.toString(),
-      sharedWith: (t.sharedWith ?? []).map((id: ObjectId) => id.toString()),
-    }))
+    list.map((t: any) => {
+      const isOwner = t.ownerId.equals(uid);
+      return {
+        id: t._id.toString(),
+        name: t.name,
+        color: t.color,
+        visible: isOwner ? (t.visible ?? true) : true,
+        ownerId: t.ownerId.toString(),
+        sharedWith: (t.sharedWith ?? []).map((id: ObjectId) => id.toString()),
+      };
+    })
   );
 });
 
@@ -159,10 +162,16 @@ calendarRouter.get("/events", async (req: AuthRequest, res) => {
     .toArray();
   const sharedTagIds = sharedTags.map(t => t._id);
 
+  const ownedTags = await tags
+    .find({ ownerId: uid })
+    .toArray();
+  const ownedTagIds = ownedTags.map(t => t._id);
+
   const list = await events.find({
     $or: [
       { userId: uid },
-      { tag: { $in: sharedTagIds } }
+      { tag: { $in: sharedTagIds } },
+      { tag: { $in: ownedTagIds } }
     ]
   }).toArray();
 
