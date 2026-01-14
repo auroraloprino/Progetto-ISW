@@ -63,21 +63,17 @@ body {
 }
 
 body.dashboard-page {
-  overflow: hidden;
+  overflow: auto; 
 }
 
 body.dashboard-page .account-wrapper {
-  height: calc(100vh - 80px);
-  margin-top: 80px;
-  padding: 2rem;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 .account-wrapper {
-  height: calc(100vh - 80px);
-  margin-top: 80px;
-  padding: 2rem;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
 }
 
 body.no-scroll {

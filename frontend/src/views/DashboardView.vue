@@ -11,22 +11,23 @@
     </div>
   </nav>
 
-  <div class="account-wrapper">
-    <!-- Notifiche: larghezza piena -->
-    <div class="full-width">
+ <div class="account-wrapper">
+  <div class="account-grid">
+    <section class="panel">
       <NotificationsArea />
-    </div>
-    
-    <!-- Elementi Condivisi: larghezza piena -->
-    <div class="full-width">
-      <SharedItemsComponent />
-    </div>
-    
-    <!-- Inviti e Account: affiancati -->
-    <div class="two-columns">
+    </section>
+
+    <section class="panel">
       <InvitesComponent />
-      
+    </section>
+
+    <section class="panel panel-wide">
+      <SharedItemsComponent />
+    </section>
+
+    <aside class="panel panel-account">
       <div class="account-card">
+        <!-- TUTTO il tuo contenuto account rimane IDENTICO -->
         <div class="profile-header">
           <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
             <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
@@ -34,15 +35,15 @@
             <div class="upload-overlay">
               <i class="fas fa-camera"></i>
             </div>
-            <input 
-              ref="fileInput" 
-              type="file" 
-              accept="image/*" 
-              @change="handleImageUpload" 
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              @change="handleImageUpload"
               style="display: none"
             />
           </div>
-          
+
           <button @click="handleToggleTheme" class="theme-toggle-btn">
             {{ currentThemeMode === 'dark' ? '☼' : '☾' }}
           </button>
@@ -52,52 +53,42 @@
           {{ user?.username || user?.email }}
         </div>
 
-        
-<div class="account-actions">
+        <div class="account-actions">
+          <button class="action-btn" @click="showEdit = !showEdit">
+            Modifica dati account
+            <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+          </button>
 
-  <button class="action-btn" @click="showEdit = !showEdit">
-    Modifica dati account
-    <i class="fas" :class="showEdit ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-  </button>
+          <div v-if="showEdit" class="dropdown">
+            <div class="edit-block">
+              <input v-model="newUsername" placeholder="Nuovo username" />
+              <button class="dropdown-action-btn" @click="changeUsername">Salva username</button>
+            </div>
 
-<div v-if="showEdit" class="dropdown">
+            <div class="edit-block">
+              <input v-model="newEmail" type="email" placeholder="Nuova email" />
+              <button class="dropdown-action-btn" @click="changeEmail">Salva email</button>
+            </div>
+          </div>
 
-  <div class="edit-block">
-    <input v-model="newUsername" placeholder="Nuovo username" />
-    <button class="dropdown-action-btn" @click="changeUsername">
-  Salva username
-</button>
-  </div>
+          <button class="action-btn" @click="showPassword = !showPassword">
+            Cambia password
+            <i class="fas" :class="showPassword ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+          </button>
 
-  <div class="edit-block">
-    <input v-model="newEmail" type="email" placeholder="Nuova email" />
-    <button class="dropdown-action-btn" @click="changeEmail">
-  Salva email
-</button>
-  </div>
-
-</div>
-
-  <button class="action-btn" @click="showPassword = !showPassword">
-    Cambia password
-    <i class="fas" :class="showPassword ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-  </button>
-
-  <div v-if="showPassword" class="dropdown">
-    <input v-model="oldPassword" type="password" placeholder="Password attuale" />
-    <input v-model="newPassword" type="password" placeholder="Nuova password" />
-    <button class="dropdown-action-btn" @click="changePasswordHandler">
-  Aggiorna password
-</button>
-  </div>
-
-</div>
+          <div v-if="showPassword" class="dropdown">
+            <input v-model="oldPassword" type="password" placeholder="Password attuale" />
+            <input v-model="newPassword" type="password" placeholder="Nuova password" />
+            <button class="dropdown-action-btn" @click="changePasswordHandler">Aggiorna password</button>
+          </div>
+        </div>
 
         <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
-      <button class="delete-account-btn" @click="deleteAccountAndData"> ELIMINA ACCOUNT </button>
+        <button class="delete-account-btn" @click="deleteAccountAndData">ELIMINA ACCOUNT</button>
       </div>
-    </div>
+    </aside>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -232,15 +223,6 @@ async function deleteAccountAndData() {
   margin-right: auto;
 }
 
-.full-width {
-  width: 100%;
-}
-
-.two-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
 
 @media (max-width: 1024px) {
   .two-columns {
@@ -387,5 +369,69 @@ async function deleteAccountAndData() {
 .delete-account-btn:hover{
   background: rgba(231, 76, 60, 1);
   transform: scale(1.02);
+}
+
+.account-wrapper {
+  padding: 2rem;
+  margin-top: 100px;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* GRIGLIA 4 COLONNE */
+.account-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 360px;
+  gap: 18px;
+  align-items: start;
+
+  /* evita “tagli” */
+  min-height: calc(100vh - 140px);
+}
+
+/* pannelli */
+.panel {
+  min-width: 0;
+  min-height: 0;
+
+  /* ogni colonna scrolla internamente se serve */
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+
+/* account sempre visibile a destra */
+.panel-account {
+  position: sticky;
+  top: 120px;
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+
+/* OVERRIDE componenti che ti restringono la colonna */
+:deep(.notifications-area) {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* l’invites ha margin-top: 2rem: lo togliamo in dashboard */
+:deep(.invites-section) {
+  margin-top: 0 !important;
+}
+
+/* responsive */
+@media (max-width: 1200px) {
+  .account-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .panel-account {
+    position: static;
+  }
+}
+
+@media (max-width: 700px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

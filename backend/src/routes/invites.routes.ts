@@ -84,19 +84,27 @@ invitesRouter.post("/:id/accept", async (req: AuthRequest, res) => {
     return res.status(403).json({ error: "Not your invite" });
   }
 
-  if (invite.type === "tag") {
-    const tags = dbService.getDb().collection("tags");
-    await tags.updateOne(
-      { _id: invite.itemId },
-      { $addToSet: { sharedWith: invite.recipientId } }
-    );
-  } else if (invite.type === "board") {
-    const boards = dbService.getDb().collection("boards");
-    await boards.updateOne(
-      { _id: invite.itemId },
-      { $addToSet: { members: { userId: invite.recipientId, role: invite.role } } }
-    );
-  }
+if (invite.type === "tag") {
+  const tags = dbService.getDb().collection("tags");
+
+  await tags.updateOne(
+    { _id: invite.itemId },
+    {
+      $addToSet: {
+        sharedWith: {
+          userId: invite.recipientId,
+          role: invite.role || "editor",
+        },
+      },
+    }
+  );
+} else if (invite.type === "board") {
+  const boards = dbService.getDb().collection("boards");
+  await boards.updateOne(
+    { _id: invite.itemId },
+    { $addToSet: { members: { userId: invite.recipientId, role: invite.role } } }
+  );
+}
 
   await invites.updateOne(
     { _id: new ObjectId(inviteId) },

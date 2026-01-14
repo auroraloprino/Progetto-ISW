@@ -32,6 +32,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { api } from '../services/api'
+import { useInvitesBadge } from "../composables/useInvitesBadge";
+
+const { refreshInvitesCount } = useInvitesBadge();
 
 interface Invite {
   id: string
@@ -59,6 +62,7 @@ const acceptInvite = async (inviteId: string) => {
   try {
     await api.post(`/invites/${inviteId}/accept`)
     await loadInvites()
+    await refreshInvitesCount()  
   } catch (error) {
     console.error('Error accepting invite:', error)
   }
@@ -68,6 +72,7 @@ const rejectInvite = async (inviteId: string) => {
   try {
     await api.post(`/invites/${inviteId}/reject`)
     await loadInvites()
+    await refreshInvitesCount()
   } catch (error) {
     console.error('Error rejecting invite:', error)
   }
