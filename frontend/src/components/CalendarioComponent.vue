@@ -356,6 +356,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
+import { useCalendar } from '../composables/useCalendar'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
@@ -370,10 +371,23 @@ const displayYear = ref(currentDate.getFullYear())
 const currentView = ref('month')
 const selectedDay = ref(currentDate.getDate())
 
-const tags = ref<Tag[]>([])
-const events = ref<{ [key: string]: Event[] }>({})
-const tagsVisible = ref(true)
+const { notifications } = useNotifications()
+const {
+  tags,
+  events,
+  loading,
+  error,
+  createTag,
+  updateTag,
+  deleteTag: deleteTagAPI,
+  toggleTagVisibility,
+  createEvent,
+  updateEvent,
+  deleteEvent: deleteEventAPI,
+  getTagById
+} = useCalendar()
 
+const tagsVisible = ref(true)
 const showEventModal = ref(false)
 const showTagModal = ref(false)
 const showConfirmModal = ref(false)
@@ -402,14 +416,6 @@ const confirmModal = ref<ConfirmModal>({
   callback: null
 })
 
-const tagIdCounter = ref(1)
-const eventIdCounter = ref(1)
-
-const TAGS_KEY = 'calendar_tags'
-const EVENTS_KEY = 'calendar_events'
-
-const { notifications } = useNotifications()
-
 const todayEventsCount = computed(() => {
   return notifications.value.filter(n => {
     if (n.read) return false
@@ -423,34 +429,7 @@ const todayEventsCount = computed(() => {
   }).length
 })
 
-const loadData = () => {
-  const savedTags = localStorage.getItem(TAGS_KEY)
-  const savedEvents = localStorage.getItem(EVENTS_KEY)
-  
-  if (savedTags) {
-    const data = JSON.parse(savedTags)
-    tags.value = data.tags
-    tagIdCounter.value = data.nextId
-  }
-  
-  if (savedEvents) {
-    const data = JSON.parse(savedEvents)
-    events.value = data.events
-    eventIdCounter.value = data.nextId
-  }
-}
 
-const saveData = () => {
-  localStorage.setItem(TAGS_KEY, JSON.stringify({
-    tags: tags.value,
-    nextId: tagIdCounter.value
-  }))
-  
-  localStorage.setItem(EVENTS_KEY, JSON.stringify({
-    events: events.value,
-    nextId: eventIdCounter.value
-  }))
-}
 
 const calendarDays = computed(() => {
   const days = []
@@ -470,7 +449,7 @@ const calendarDays = computed(() => {
     const dateKey = `${prevYear}-${prevMonth + 1}-${dayDate}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -491,7 +470,7 @@ const calendarDays = computed(() => {
     const dateKey = `${displayYear.value}-${displayMonth.value + 1}-${i}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -519,7 +498,7 @@ const calendarDays = computed(() => {
     const dateKey = `${nextYear}-${nextMonth + 1}-${i}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -719,12 +698,8 @@ const toggleTagsVisibility = () => {
   tagsVisible.value = !tagsVisible.value
 }
 
-const toggleTag = (tagId: number) => {
-  const tag = tags.value.find(t => t.id === tagId)
-  if (tag) {
-    tag.visible = !tag.visible
-    saveData()
-  }
+const toggleTag = async (tagId: number) => {
+  await toggleTagVisibility(tagId)
 }
 
 const openTagModal = () => {
@@ -746,42 +721,28 @@ const editTag = (tagId: number) => {
   showTagModal.value = true
 }
 
-const saveTag = () => {
+const saveTag = async () => {
   if (!tagForm.value.name.trim()) return
   
-  if (editingTagId.value) {
-    const tag = tags.value.find(t => t.id === editingTagId.value)
-    if (tag) {
-      tag.name = tagForm.value.name
-      tag.color = tagForm.value.color
+  try {
+    if (editingTagId.value) {
+      await updateTag(editingTagId.value, tagForm.value)
+    } else {
+      await createTag(tagForm.value)
     }
-  } else {
-    tags.value.push({
-      id: tagIdCounter.value++,
-      name: tagForm.value.name,
-      color: tagForm.value.color,
-      visible: true
-    })
+    closeTagModal()
+  } catch (error) {
+    console.error('Error saving tag:', error)
   }
-  
-  saveData()
-  closeTagModal()
 }
 
 const deleteTag = (tagId: number) => {
-  showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', () => {
-    for (const dateKey in events.value) {
-      const dayEvents = events.value[dateKey];
-      if (!dayEvents) continue;
-      
-      events.value[dateKey] = dayEvents.filter(event => event.tag !== tagId)
-      if (events.value[dateKey].length === 0) {
-        delete events.value[dateKey]
-      }
+  showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', async () => {
+    try {
+      await deleteTagAPI(tagId)
+    } catch (error) {
+      console.error('Error deleting tag:', error)
     }
-    
-    tags.value = tags.value.filter(t => t.id !== tagId)
-    saveData()
   })
 }
 
@@ -882,68 +843,33 @@ const editEvent = (dateKey: string, eventId: number) => {
   showEventModal.value = true
 }
 
-const saveEvent = () => {
+const saveEvent = async () => {
   if (!eventForm.value.datetime) return
   
-  const startDate = new Date(eventForm.value.datetime)
-  const endDate = eventForm.value.endDatetime ? new Date(eventForm.value.endDatetime) : startDate
-  
-  const newEvent: Event = {
-    id: editingEventId.value || eventIdCounter.value++,
-    title: eventForm.value.title || 'Evento senza titolo',
-    datetime: eventForm.value.datetime,
-    endDatetime: eventForm.value.endDatetime || undefined,
-    type: eventForm.value.type,
-    description: eventForm.value.description,
-    tag: eventForm.value.tag ? Number(eventForm.value.tag) : undefined,
-    allDay: eventForm.value.allDay
-  }
-  
-  if (editingEventId.value) {
-    for (const dateKey in events.value) {
-      const dayEvents = events.value[dateKey];
-      if (!dayEvents) continue;
-      
-      events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
-      if (events.value[dateKey].length === 0) {
-        delete events.value[dateKey]
-      }
+  try {
+    if (editingEventId.value) {
+      await updateEvent(editingEventId.value, eventForm.value)
+    } else {
+      await createEvent(eventForm.value)
     }
+    closeEventModal()
+  } catch (error) {
+    console.error('Error saving event:', error)
   }
-  
-  const currentDate = new Date(startDate)
-  while (currentDate <= endDate) {
-    const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`
-    
-    if (!events.value[dateKey]) {
-      events.value[dateKey] = []
-    }
-    
-    events.value[dateKey].push(newEvent)
-    currentDate.setDate(currentDate.getDate() + 1)
-  }
-  
-  saveData()
-  closeEventModal()
 }
 
 const deleteEvent = () => {
   if (!editingEventId.value) return
   
-  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
     if (editingEventId.value) {
-      for (const dateKey in events.value) {
-        const dayEvents = events.value[dateKey];
-        if (!dayEvents) continue;
-        
-        events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
-        if (events.value[dateKey].length === 0) {
-          delete events.value[dateKey]
-        }
+      try {
+        await deleteEventAPI(editingEventId.value)
+        closeEventModal()
+      } catch (error) {
+        console.error('Error deleting event:', error)
       }
-      saveData()
     }
-    closeEventModal()
   })
 }
 
@@ -1010,17 +936,12 @@ const getAllDayEvents = (): Event[] => {
 }
 
 const deleteEventFromSidebar = (eventId: number) => {
-  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
-    for (const key in events.value) {
-      const dayEvents = events.value[key];
-      if (!dayEvents) continue;
-      
-      events.value[key] = dayEvents.filter(e => e.id !== eventId)
-      if (events.value[key].length === 0) {
-        delete events.value[key]
-      }
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
+    try {
+      await deleteEventAPI(eventId)
+    } catch (error) {
+      console.error('Error deleting event:', error)
     }
-    saveData()
   })
 }
 
@@ -1129,7 +1050,6 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => {
-  loadData()
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
   document.body.classList.add('no-scroll')

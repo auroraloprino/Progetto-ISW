@@ -76,9 +76,9 @@
         class="board-card"
         @click="openBoard(board.slug)"
       >
-        <button 
+        <button
           class="delete-btn"
-          @click.stop="handleDeleteBoard(board.slug)"
+          @click.stop="handleDeleteBoard(board)"
           title="Elimina bacheca"
         >
           <i class="fas fa-times"></i>
@@ -115,6 +115,7 @@ const router = useRouter();
 const {
   boards,
   boardsList,
+  loadBoards,
   createBoard,
   deleteBoard,
   updateBoardTitle
@@ -160,6 +161,10 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
+onMounted(async () => {
+  await loadBoards();
+  document.addEventListener('click', handleClickOutside);
+});
 
 // Dropdown handlers
 const toggleDropdown = () => {
@@ -192,11 +197,11 @@ const closeDropdown = () => {
 };
 
 // Board operations
-const handleCreateBoard = () => {
-  const newBoard = createBoard();
+const handleCreateBoard = async () => {
+  const newBoard = await createBoard();
   newBoard.editing = true;
   boardTitles[newBoard.slug] = newBoard.title;
-  
+
   nextTick(() => {
     const inputs = titleInputs.value;
     if (inputs && inputs.length > 0) {
@@ -218,20 +223,21 @@ const startEditTitle = (board: Board) => {
   });
 };
 
-const saveBoardTitle = (board: Board) => {
-  const title = boardTitles[board.slug] || board.title;
-  const newSlug = updateBoardTitle(board.slug, title);
+const saveBoardTitle = async (board: Board) => {
+  const oldSlug = board.slug;
+  const title = boardTitles[oldSlug] || board.title;
+
+  const { newSlug } = await updateBoardTitle(board.id, title);
   board.editing = false;
-  
-  // If slug changed, update the reactive object
-  if (newSlug && newSlug !== board.slug) {
-    delete boardTitles[board.slug];
+
+  if (newSlug && newSlug !== oldSlug) {
+    delete boardTitles[oldSlug];
     boardTitles[newSlug] = title;
   }
 };
 
-const handleDeleteBoard = (slug: string) => {
-  deleteBoard(slug);
+const handleDeleteBoard = async (board: Board) => {
+  await deleteBoard(board.id);
 };
 
 const openBoard = (slug: string) => {

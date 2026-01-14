@@ -1,319 +1,260 @@
-import { ref, computed } from 'vue';
-import type { Board, Column, Task, BoardsState } from '../types/boards';
+// frontend/src/composables/useBoards.ts
+import { ref, computed } from "vue";
+import type { Board, Column, Task, BoardsState } from "../types/boards";
+import { api } from "../services/api";
 
-const BOARDS_KEY = 'bacheche_data';
+const state = ref<BoardsState>({ boards: [] });
 
-const state = ref<BoardsState>({
-  boards: []
-});
+const generateSlug = (title: string, existingSlugs: string[] = []): string => {
+  let slug = title
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  if (!slug) slug = "bacheca";
+
+  let finalSlug = slug;
+  let counter = 1;
+  while (existingSlugs.includes(finalSlug)) {
+    finalSlug = `${slug}-${counter++}`;
+  }
+  return finalSlug;
+};
+
+const generateId = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
 export function useBoards() {
-  // Generate slug from title
-  const generateSlug = (title: string, existingSlugs: string[] = []): string => {
-    // Convert to lowercase and replace spaces/special chars with hyphens
-    let slug = title
-      .toLowerCase()
-      .trim()
-      .normalize('NFD') // Decompose accented characters
-      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-      .replace(/[^\w\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single
-      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  const boards = computed(() => state.value.boards);
+  const boardsList = computed(() => state.value.boards.map((b) => ({ slug: b.slug, title: b.title })));
 
-    // If empty, use default
-    if (!slug) {
-      slug = 'bacheca';
-    }
+  const getExistingSlugs = () => state.value.boards.map((b) => b.slug);
 
-    // Check if slug exists and add number suffix if needed
-    let finalSlug = slug;
-    let counter = 1;
-    while (existingSlugs.includes(finalSlug)) {
-      finalSlug = `${slug}-${counter}`;
-      counter++;
-    }
-
-    return finalSlug;
+  const loadBoards = async () => {
+    const r = await api.get("/boards");
+    state.value.boards = r.data as Board[];
   };
 
-  // Load from localStorage
-  const loadBoards = () => {
-    try {
-      const saved = localStorage.getItem(BOARDS_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        
-        // Migration: convert old numeric IDs to slugs if needed
-        if (data.boards && data.boards.length > 0) {
-          const firstBoard = data.boards[0];
-          
-          // Check if boards still use old format (id instead of slug)
-          if ('id' in firstBoard && !('slug' in firstBoard)) {
-            console.log('Migrating old board format to slug-based...');
-            data.boards = data.boards.map((board: any) => {
-              const slug = generateSlug(board.title);
-              return {
-                slug,
-                title: board.title,
-                editing: board.editing || false,
-                columns: (board.columns || []).map((col: any) => ({
-                  ...col,
-                  boardSlug: slug
-                }))
-              };
-            });
-            // Save migrated data
-            localStorage.setItem(BOARDS_KEY, JSON.stringify(data));
-          }
-        }
-        
-        state.value = data;
-      }
-    } catch (error) {
-      console.error('Error loading boards:', error);
-      state.value = { boards: [] };
-    }
-  };
+  const getBoardBySlug = (slug: string): Board | undefined => state.value.boards.find((b) => b.slug === slug);
 
-  // Save to localStorage
-  const saveBoards = () => {
-    try {
-      localStorage.setItem(BOARDS_KEY, JSON.stringify(state.value));
-    } catch (error) {
-      console.error('Error saving boards:', error);
-    }
-  };
-
-  // Generate unique ID for columns/tasks
-  const generateId = (): string => {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  // Get all existing slugs
-  const getExistingSlugs = (): string[] => {
-    return state.value.boards.map(b => b.slug);
-  };
-
-  // Board operations
-  const createBoard = (title: string = 'Nuova Bacheca'): Board => {
+  const createBoard = async (title: string = "Nuova Bacheca"): Promise<Board> => {
     const slug = generateSlug(title, getExistingSlugs());
-    const newBoard: Board = {
-      slug,
-      title,
-      editing: false,
-      columns: []
-    };
-    state.value.boards.push(newBoard);
-    saveBoards();
-    return newBoard;
+    const r = await api.post("/boards", { title, slug });
+    const created = r.data as Board;
+    state.value.boards.push(created);
+    return created;
   };
 
-  const deleteBoard = (slug: string): boolean => {
-    const index = state.value.boards.findIndex(b => b.slug === slug);
-    if (index !== -1) {
-      state.value.boards.splice(index, 1);
-      saveBoards();
-      return true;
-    }
-    return false;
+  const deleteBoard = async (boardId: string): Promise<boolean> => {
+    await api.delete(`/boards/${boardId}`);
+    state.value.boards = state.value.boards.filter((b) => b.id !== boardId);
+    return true;
   };
 
-  const updateBoardTitle = (oldSlug: string, newTitle: string): string | null => {
-    const board = state.value.boards.find(b => b.slug === oldSlug);
-    if (!board) return null;
+  const updateBoard = async (board: Board): Promise<Board> => {
+    const r = await api.put(`/boards/${board.id}`, {
+      title: board.title,
+      slug: board.slug,
+      columns: board.columns,
+    });
+    const updated = r.data as Board;
 
-    const trimmedTitle = newTitle.trim() || 'Bacheca Senza Nome';
-    
-    // Generate new slug
-    const existingSlugs = getExistingSlugs().filter(s => s !== oldSlug);
+    const idx = state.value.boards.findIndex((b) => b.id === board.id);
+    if (idx !== -1) state.value.boards[idx] = updated;
+
+    return updated;
+  };
+
+  const updateBoardTitle = async (boardId: string, newTitle: string): Promise<{ newSlug: string }> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
+    if (!board) throw new Error("Board not found");
+
+    const trimmedTitle = newTitle.trim() || "Bacheca Senza Nome";
+    const existingSlugs = getExistingSlugs().filter((s) => s !== board.slug);
     const newSlug = generateSlug(trimmedTitle, existingSlugs);
-    
-    // Update board
+
     board.title = trimmedTitle;
     board.slug = newSlug;
-    
-    // Update all columns and tasks with new boardSlug
-    board.columns.forEach(column => {
-      column.boardSlug = newSlug;
-      column.tasks.forEach(task => {
-        task.boardSlug = newSlug;
-      });
-    });
-    
-    saveBoards();
-    return newSlug;
-  };
 
-  const getBoardBySlug = (slug: string): Board | undefined => {
-    return state.value.boards.find(b => b.slug === slug);
+    // aggiorna boardSlug su colonne/task
+    board.columns.forEach((col) => {
+      col.boardSlug = newSlug;
+      col.tasks.forEach((t) => (t.boardSlug = newSlug));
+    });
+
+    await updateBoard(board);
+    return { newSlug };
   };
 
   // Column operations
-  const addColumn = (boardSlug: string, title: string = 'TITOLO'): Column | null => {
-    const board = getBoardBySlug(boardSlug);
+  const addColumn = async (boardId: string, title: string = "TITOLO"): Promise<Column | null> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return null;
 
     const newColumn: Column = {
       id: generateId(),
       title,
-      boardSlug,
+      boardSlug: board.slug,
       order: board.columns.length,
-      tasks: []
+      tasks: [],
     };
 
     board.columns.push(newColumn);
-    saveBoards();
+    await updateBoard(board);
     return newColumn;
   };
 
-  const deleteColumn = (boardSlug: string, columnId: string): boolean => {
-    const board = getBoardBySlug(boardSlug);
+  const deleteColumn = async (boardId: string, columnId: string): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return false;
 
-    const index = board.columns.findIndex(c => c.id === columnId);
-    if (index !== -1) {
-      board.columns.splice(index, 1);
-      // Reorder remaining columns
-      board.columns.forEach((col, idx) => col.order = idx);
-      saveBoards();
-      return true;
-    }
-    return false;
+    const index = board.columns.findIndex((c) => c.id === columnId);
+    if (index === -1) return false;
+
+    board.columns.splice(index, 1);
+    board.columns.forEach((col, idx) => (col.order = idx));
+
+    await updateBoard(board);
+    return true;
   };
 
-  const updateColumnTitle = (boardSlug: string, columnId: string, title: string): boolean => {
-    const board = getBoardBySlug(boardSlug);
+  const updateColumnTitle = async (boardId: string, columnId: string, title: string): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return false;
 
-    const column = board.columns.find(c => c.id === columnId);
-    if (column) {
-      column.title = title.trim() || 'TITOLO';
-      saveBoards();
-      return true;
-    }
-    return false;
+    const column = board.columns.find((c) => c.id === columnId);
+    if (!column) return false;
+
+    column.title = title.trim() || "TITOLO";
+    await updateBoard(board);
+    return true;
   };
 
   // Task operations
-  const addTask = (boardSlug: string, columnId: string, title: string = 'TASK'): Task | null => {
-    const board = getBoardBySlug(boardSlug);
+  const addTask = async (boardId: string, columnId: string, title: string = "TASK"): Promise<Task | null> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return null;
 
-    const column = board.columns.find(c => c.id === columnId);
+    const column = board.columns.find((c) => c.id === columnId);
     if (!column) return null;
 
     const newTask: Task = {
       id: generateId(),
       title,
       columnId,
-      boardSlug,
-      order: column.tasks.length
+      boardSlug: board.slug,
+      order: column.tasks.length,
     };
 
     column.tasks.push(newTask);
-    saveBoards();
+    await updateBoard(board);
     return newTask;
   };
 
-  const deleteTask = (boardSlug: string, columnId: string, taskId: string): boolean => {
-    const board = getBoardBySlug(boardSlug);
+  const deleteTask = async (boardId: string, columnId: string, taskId: string): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return false;
 
-    const column = board.columns.find(c => c.id === columnId);
+    const column = board.columns.find((c) => c.id === columnId);
     if (!column) return false;
 
-    const index = column.tasks.findIndex(t => t.id === taskId);
-    if (index !== -1) {
-      column.tasks.splice(index, 1);
-      // Reorder remaining tasks
-      column.tasks.forEach((task, idx) => task.order = idx);
-      saveBoards();
-      return true;
-    }
-    return false;
-  };
+    const index = column.tasks.findIndex((t) => t.id === taskId);
+    if (index === -1) return false;
 
-  const updateTaskTitle = (boardSlug: string, columnId: string, taskId: string, title: string): boolean => {
-    const board = getBoardBySlug(boardSlug);
-    if (!board) return false;
+    column.tasks.splice(index, 1);
+    column.tasks.forEach((t, idx) => (t.order = idx));
 
-    const column = board.columns.find(c => c.id === columnId);
-    if (!column) return false;
-
-    const task = column.tasks.find(t => t.id === taskId);
-    if (task) {
-      task.title = title.trim() || 'TASK';
-      saveBoards();
-      return true;
-    }
-    return false;
-  };
-
-  const moveTask = (boardSlug: string, taskId: string, fromColumnId: string, toColumnId: string, newOrder: number): boolean => {
-    const board = getBoardBySlug(boardSlug);
-    if (!board) return false;
-
-    const fromColumn = board.columns.find(c => c.id === fromColumnId);
-    const toColumn = board.columns.find(c => c.id === toColumnId);
-    if (!fromColumn || !toColumn) return false;
-
-    const taskIndex = fromColumn.tasks.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return false;
-
-    const task = fromColumn.tasks[taskIndex];
-    
-    // Remove from source column
-    fromColumn.tasks.splice(taskIndex, 1);
-    
-    // Update task's columnId
-    task.columnId = toColumnId;
-    task.boardSlug = boardSlug;
-    
-    // Insert into target column at specified position
-    toColumn.tasks.splice(newOrder, 0, task);
-    
-    // Reorder tasks in both columns
-    fromColumn.tasks.forEach((t, idx) => t.order = idx);
-    toColumn.tasks.forEach((t, idx) => t.order = idx);
-    
-    saveBoards();
+    await updateBoard(board);
     return true;
   };
 
-  // Computed
-  const boards = computed(() => state.value.boards);
-  const boardsList = computed(() => 
-    state.value.boards.map(b => ({ slug: b.slug, title: b.title }))
-  );
+  const updateTaskTitle = async (
+    boardId: string,
+    columnId: string,
+    taskId: string,
+    title: string
+  ): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
+    if (!board) return false;
 
-  // Initialize
-  loadBoards();
+    const column = board.columns.find((c) => c.id === columnId);
+    if (!column) return false;
 
+    const task = column.tasks.find((t) => t.id === taskId);
+    if (!task) return false;
+
+    task.title = title.trim() || "TASK";
+    await updateBoard(board);
+    return true;
+  };
+
+  const moveTask = async (
+    boardId: string,
+    taskId: string,
+    fromColumnId: string,
+    toColumnId: string,
+    newOrder: number
+  ): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
+    if (!board) return false;
+
+    const fromColumn = board.columns.find((c) => c.id === fromColumnId);
+    const toColumn = board.columns.find((c) => c.id === toColumnId);
+    if (!fromColumn || !toColumn) return false;
+
+    const taskIndex = fromColumn.tasks.findIndex((t) => t.id === taskId);
+    if (taskIndex === -1) return false;
+
+    const task = fromColumn.tasks[taskIndex];
+    fromColumn.tasks.splice(taskIndex, 1);
+
+    task.columnId = toColumnId;
+
+    toColumn.tasks.splice(newOrder, 0, task);
+
+    fromColumn.tasks.forEach((t, idx) => (t.order = idx));
+    toColumn.tasks.forEach((t, idx) => (t.order = idx));
+
+    await updateBoard(board);
+    return true;
+  };
+
+  const toggleTaskComplete = async (boardId: string, columnId: string, taskId: string): Promise<boolean> => {
+    const board = state.value.boards.find((b) => b.id === boardId);
+    if (!board) return false;
+
+    const column = board.columns.find((c) => c.id === columnId);
+    if (!column) return false;
+
+    const task = column.tasks.find((t) => t.id === taskId);
+    if (!task) return false;
+
+    task.completed = !task.completed;
+    await updateBoard(board);
+    return true;
+  };
+
+  // non auto-load qui per evitare chiamate duplicate.
+  // Le view chiamano loadBoards() in onMounted.
   return {
-    // State
     boards,
     boardsList,
-    
-    // Board operations
+    loadBoards,
+    getBoardBySlug,
     createBoard,
     deleteBoard,
     updateBoardTitle,
-    getBoardBySlug,
-    
-    // Column operations
     addColumn,
     deleteColumn,
     updateColumnTitle,
-    
-    // Task operations
     addTask,
     deleteTask,
     updateTaskTitle,
     moveTask,
-    
-    // Utils
-    saveBoards,
-    loadBoards
+    toggleTaskComplete,
   };
 }

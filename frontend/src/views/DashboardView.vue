@@ -71,7 +71,7 @@
   <div v-if="showPassword" class="dropdown">
     <input v-model="oldPassword" type="password" placeholder="Password attuale" />
     <input v-model="newPassword" type="password" placeholder="Nuova password" />
-    <button class="dropdown-action-btn" @click="changePassword">
+    <button class="dropdown-action-btn" @click="changePasswordHandler">
   Aggiorna password
 </button>
   </div>
@@ -93,13 +93,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
-import { currentUser, logout, updateUser, type User } from '../auth/auth'
+import { currentUser, logout, updateUser, changePassword, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
 import { useNotifications } from '../composables/useNotifications'
 
-const user = ref<User | null>(currentUser())
+
 const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
 const isUploading = ref(false)
@@ -112,6 +112,12 @@ const oldPassword = ref("")
 const newPassword = ref("")
 const showEdit = ref(false)
 const showPassword = ref(false)
+const user = ref<User | null>(null)
+
+onMounted(async () => {
+  currentThemeMode.value = getCurrentTheme()
+  user.value = await currentUser()
+})
 
 onMounted(() => {
   document.body.classList.add('dashboard-page')
@@ -149,8 +155,7 @@ const handleImageUpload = async (event: Event) => {
   isUploading.value = true
   try {
     const imageUrl = await uploadProfileImage(file)
-    updateUser({ profileImage: imageUrl })
-    user.value = currentUser()
+user.value = await updateUser({ profileImage: imageUrl })
   } catch (error) {
     console.error('Errore upload:', error)
   } finally {
@@ -158,41 +163,46 @@ const handleImageUpload = async (event: Event) => {
   }
 }
 
-function changeUsername() {
-  if (!user.value) return
-  if (!newUsername.value) return alert("Username non valido")
+onMounted(() => {
+  currentThemeMode.value = getCurrentTheme()
+})
 
-  updateUser({ username: newUsername.value })
-  user.value = currentUser()
-  newUsername.value = ""
+async function changeUsername() {
+  if (!newUsername.value.trim()) return alert("Username non valido")
+  try {
+    user.value = await updateUser({ username: newUsername.value.trim() })
+    newUsername.value = ""
+  } catch (e) {
+    console.error(e)
+    alert("Errore aggiornamento username")
+  }
 }
 
-function changeEmail() {
-  if (!user.value) return
-  if (!newEmail.value) return alert("Email non valida")
-
-  updateUser({ email: newEmail.value })
-  user.value = currentUser()
-  newEmail.value = ""
+async function changeEmail() {
+  if (!newEmail.value.trim()) return alert("Email non valida")
+  try {
+    user.value = await updateUser({ email: newEmail.value.trim() })
+    newEmail.value = ""
+  } catch (e) {
+    console.error(e)
+    alert("Errore aggiornamento email")
+  }
 }
 
-function changePassword() {
-  if (!user.value) return
-
-  if (user.value.password !== oldPassword.value) {
-    alert("Password attuale errata")
-    return
+async function changePasswordHandler() {
+  if (!oldPassword.value || !newPassword.value) {
+    return alert("Compila entrambi i campi password")
   }
 
-  if (!newPassword.value) {
-    alert("Nuova password non valida")
-    return
+  try {
+    await changePassword(oldPassword.value, newPassword.value)
+    oldPassword.value = ""
+    newPassword.value = ""
+    alert("Password aggiornata")
+  } catch (e) {
+    console.error(e)
+    alert("Password attuale errata o errore server")
   }
-
-  updateUser({ password: newPassword.value })
-  oldPassword.value = ""
-  newPassword.value = ""
-  alert("Password aggiornata")
 }
 </script>
 
@@ -282,4 +292,5 @@ function changePassword() {
   background: rgba(13,72,83,1);
   transform: scale(1.02);
 }
+
 </style>

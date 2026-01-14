@@ -88,7 +88,7 @@
           >
             <button 
               class="task-checkbox"
-              @click.stop="toggleTaskComplete(column.id, task.id)"
+              @click.stop="toggleTaskCompleteLocal(column.id, task.id)"
               :class="{ checked: task.completed }"
             >
               <i v-if="task.completed" class="fas fa-check"></i>
@@ -144,6 +144,7 @@ const router = useRouter();
 
 const {
   boardsList,
+  loadBoards,
   getBoardBySlug,
   updateBoardTitle,
   addColumn,
@@ -151,7 +152,9 @@ const {
   updateColumnTitle,
   addTask,
   deleteTask,
-  updateTaskTitle
+  updateTaskTitle,
+  moveTask,
+  toggleTaskComplete
 } = useBoards();
 
 const dropdownOpen = ref(false);
@@ -221,11 +224,11 @@ const startEditTitle = () => {
   });
 };
 
-const saveBoardTitle = () => {
-  if (boardSlug.value !== null) {
-    const newSlug = updateBoardTitle(boardSlug.value, boardTitle.value);
-    if (newSlug && newSlug !== boardSlug.value) {
-      // Slug changed, redirect to new URL
+const saveBoardTitle = async () => {
+  if (board.value) {
+    const oldSlug = board.value.slug;
+    const { newSlug } = await updateBoardTitle(board.value.id, boardTitle.value);
+    if (newSlug && newSlug !== oldSlug) {
       router.replace(`/bacheche/${newSlug}`);
     }
   }
@@ -238,9 +241,9 @@ const goBackToBacheche = () => {
 };
 
 // Column operations
-const handleAddColumn = () => {
-  if (boardSlug.value !== null) {
-    addColumn(boardSlug.value);
+const handleAddColumn = async () => {
+  if (board.value) {
+    await addColumn(board.value.id);
   }
 };
 
@@ -249,23 +252,23 @@ const startEditColumn = (column: any) => {
   columnTitles.value[column.id] = column.title;
 };
 
-const saveColumnTitle = (columnId: string) => {
-  if (boardSlug.value !== null) {
-    updateColumnTitle(boardSlug.value, columnId, columnTitles.value[columnId] || '');
+const saveColumnTitle = async (columnId: string) => {
+  if (board.value) {
+    await updateColumnTitle(board.value.id, columnId, columnTitles.value[columnId] || "");
   }
   editingColumn.value = null;
 };
 
-const handleDeleteColumn = (columnId: string) => {
-  if (boardSlug.value !== null && confirm('Eliminare questa colonna e tutti i suoi task?')) {
-    deleteColumn(boardSlug.value, columnId);
+const handleDeleteColumn = async (columnId: string) => {
+  if (board.value) {
+    await deleteColumn(board.value.id, columnId);
   }
 };
 
 // Task operations
-const handleAddTask = (columnId: string) => {
-  if (boardSlug.value !== null) {
-    addTask(boardSlug.value, columnId);
+const handleAddTask = async (columnId: string) => {
+  if (board.value) {
+    await addTask(board.value.id, columnId);
   }
 };
 
@@ -274,35 +277,57 @@ const startEditTask = (task: any) => {
   taskTitles.value[task.id] = task.title;
 };
 
-const saveTaskTitle = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    updateTaskTitle(boardSlug.value, columnId, taskId, taskTitles.value[taskId] || '');
+const saveTaskTitle = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await updateTaskTitle(board.value.id, columnId, taskId, taskTitles.value[taskId] || "");
   }
   editingTask.value = null;
 };
 
-const handleDeleteTask = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    deleteTask(boardSlug.value, columnId, taskId);
+const handleDeleteTask = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await deleteTask(board.value.id, columnId, taskId);
   }
 };
 
-const toggleTaskComplete = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    const board = getBoardBySlug(boardSlug.value);
-    if (board) {
-      const column = board.columns.find(c => c.id === columnId);
-      if (column) {
-        const task = column.tasks.find(t => t.id === taskId);
-        if (task) {
-          task.completed = !task.completed;
-        }
-      }
-    }
+const toggleTaskCompleteLocal = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await toggleTaskComplete(board.value.id, columnId, taskId);
   }
 };
 
-onMounted(() => {
+// Drag and drop handlers
+let draggedTask: { task: any; sourceColumnId: string } | null = null;
+
+const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
+  draggedTask = { task, sourceColumnId: columnId };
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+  }
+};
+
+const handleDragEnd = () => {
+  draggedTask = null;
+};
+
+const handleDrop = async (event: DragEvent, targetColumnId: string) => {
+  event.preventDefault();
+  if (!draggedTask || !board.value) return;
+
+  const { task, sourceColumnId } = draggedTask;
+
+  if (sourceColumnId !== targetColumnId) {
+    const targetColumn = board.value.columns.find((c) => c.id === targetColumnId);
+    const newOrder = targetColumn?.tasks.length || 0;
+
+    await moveTask(board.value.id, task.id, sourceColumnId, targetColumnId, newOrder);
+  }
+
+  draggedTask = null;
+};
+
+onMounted(async () => {
+  await loadBoards();
   if (!board.value) {
     router.push('/bacheche');
   }

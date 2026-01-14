@@ -11,7 +11,7 @@ import Budget from '../views/Budget.vue'
 import { currentUser } from '../auth/auth'
 
 const routes = [
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: '/calendario' },
 
   {
     path: '/calendario',
@@ -48,12 +48,12 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, _, next) => {
-  if (to.meta.auth && !currentUser()) {
-    next('/login')
-  } else {
-    next()
+router.beforeEach(async (to, _, next) => {
+  if (to.meta.auth) {
+    const u = await currentUser();
+    if (!u) return next("/login");
   }
-})
+  next();
+});
 
 export default router
