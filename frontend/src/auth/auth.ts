@@ -1,65 +1,55 @@
-const USERS_KEY = "auth_users"
-const SESSION_KEY = "auth_session"
+import { api } from "../services/api";
+
+const TOKEN_KEY = "auth_token";
 
 export interface User {
-  username: string
-  email: string
-  password: string
-  profileImage?: string
+  id: string;
+  username: string;
+  email: string;
+  profileImage?: string;
 }
 
-export function getUsers():User[]{
-  return JSON.parse(localStorage.getItem(USERS_KEY) || "[]")
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+export function setToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+export function logout() {
+  localStorage.removeItem(TOKEN_KEY);
 }
 
-export function saveUsers(u:User[]){
-  localStorage.setItem(USERS_KEY, JSON.stringify(u))
+export async function register(user: { username: string; email: string; password: string }) {
+  const r = await api.post("/auth/register", user);
+  if (r.data?.token) setToken(r.data.token);
+  return true;
 }
 
-export function register(user: User) {
-  const users = getUsers()
-  if (users.find(u => u.email === user.email)) return false
-  if (users.find(u => u.username === user.username)) return false
-  users.push(user)
-  saveUsers(users)
-  return true
-}
-export function login(identifier: string, password: string) {
-  const u = getUsers().find(
-    u =>
-      (u.email === identifier || u.username === identifier) &&
-      u.password === password
-  )
-
-  if (!u) return false
-
-  localStorage.setItem(SESSION_KEY, JSON.stringify(u))
-  return true
+export async function login(identifier: string, password: string) {
+  const r = await api.post("/auth/login", { identifier, password });
+  if (!r.data?.token) return false;
+  setToken(r.data.token);
+  return true;
 }
 
-export function logout(){
-  localStorage.removeItem(SESSION_KEY)
-}
-
-export function currentUser():User|null{
-  return JSON.parse(localStorage.getItem(SESSION_KEY) || "null")
-}
-
-export function updateUser(userData: Partial<User>): void {
-  const user = currentUser()
-  if (user) {
-    const updatedUser = { ...user, ...userData }
-
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser))
-
-    const users = getUsers()
-    const userIndex = users.findIndex(
-      u => u.username === user.username
-    )
-
-    if (userIndex !== -1) {
-      users[userIndex] = updatedUser
-      saveUsers(users)
-    }
+export async function currentUser(): Promise<User | null> {
+  if (!getToken()) return null;
+  try {
+    const r = await api.get("/auth/me");
+    return r.data as User;
+  } catch {
+    logout();
+    return null;
   }
+}
+export async function updateUser(
+  userData: Partial<Pick<User, "username" | "email" | "profileImage">>
+): Promise<User> {
+  const r = await api.put("/auth/me", userData);
+  return r.data as User;
+}
+
+export async function changePassword(oldPassword: string, newPassword: string): Promise<boolean> {
+  await api.put("/auth/password", { oldPassword, newPassword });
+  return true;
 }

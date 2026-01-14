@@ -1,33 +1,52 @@
 <template>
-<div class="chronio-auth">
-  <div class="auth-box">
-    <div class="auth-logo">CHRONIO</div>
+  <div class="chronio-auth">
+    <div class="auth-box">
+      <div class="auth-logo">CHRONIO</div>
 
-    <input v-model="user" placeholder="Username / Email">
-    <input v-model="pass" type="password" placeholder="Password">
+      <input v-model="user" placeholder="Username / Email" />
+      <input v-model="pass" type="password" placeholder="Password" />
 
-    <button @click="doLogin">Accedi</button>
+      <button @click="handleLogin">Accedi</button>
 
-    <div class="switch">
-      Non hai un account?
-      <span @click="$router.push('/register')">Registrati</span>
+      <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
+
+      <div class="switch">
+        Non hai un account?
+        <span @click="$router.push('/register')">Registrati</span>
+      </div>
     </div>
   </div>
-</div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { login } from '../auth/auth'
-import { useRouter } from 'vue-router'
+import { ref } from "vue"
+import { useRouter } from "vue-router"
+import { login } from "../auth/auth"
 
 const router = useRouter()
-const user = ref('')
-const pass = ref('')
 
-function doLogin(){
- if(!login(user.value, pass.value))
-  alert("Credenziali errate")
- else router.push('/calendario')
+const user = ref("")
+const pass = ref("")
+const errorMsg = ref("")
+
+const handleLogin = async () => {
+  errorMsg.value = ""
+
+  if (!user.value || !pass.value) {
+    errorMsg.value = "Inserisci username/email e password"
+    return
+  }
+
+  try {
+    const ok = await login(user.value, pass.value) // <-- await FONDAMENTALE
+    if (!ok) {
+      errorMsg.value = "Credenziali non valide"
+      return
+    }
+    router.push("/bacheche")
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = "Errore di connessione"
+  }
 }
 </script>

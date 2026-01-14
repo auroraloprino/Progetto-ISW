@@ -25,3 +25,11 @@ export interface Board {
 export interface BoardsState {
   boards: Board[];
 }
+
+export interface Board {
+  id: string;
+  slug: string;
+  title: string;
+  editing?: boolean;
+  columns: Column[];
+}
