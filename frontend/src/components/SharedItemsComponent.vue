@@ -1,96 +1,124 @@
 <template>
-  <div class="shared-items-section">
-    <h3>Elementi Condivisi</h3>
+  <div class="shared-items-container">
+    <h3 class="section-title">
+      <i class="fas fa-share-alt"></i>
+      Elementi Condivisi
+    </h3>
     
-    <div v-if="loading" class="loading">
-      <i class="fas fa-spinner fa-spin"></i> Caricamento...
+    <div v-if="loading" class="loading-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <span>Caricamento...</span>
     </div>
     
-    <div v-else-if="error" class="error-message">
-      <i class="fas fa-exclamation-circle"></i> {{ error }}
+    <div v-else-if="error" class="error-state">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>{{ error }}</span>
     </div>
     
-    <div v-else>
+    <div v-else-if="boards.length === 0 && tags.length === 0" class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <p>Nessun elemento condiviso</p>
+      <small>Condividi bacheche e tag con altri utenti per vederli qui</small>
+    </div>
+    
+    <div v-else class="shared-content">
       <!-- Bacheche Condivise -->
-      <div class="subsection">
-        <h4><i class="fas fa-clipboard"></i> Bacheche</h4>
-        <div v-if="boards.length === 0" class="no-items">
-          Nessuna bacheca condivisa
-        </div>
-        <div v-else class="items-list">
-          <div v-for="board in boards" :key="board.id" class="item-card">
-            <div class="item-header">
-              <div class="item-title">
+      <div v-if="boards.length > 0" class="shared-section">
+        <h4 class="subsection-title">
+          <i class="fas fa-clipboard"></i>
+          Bacheche ({{ boards.length }})
+        </h4>
+        <div class="items-grid">
+          <div v-for="board in boards" :key="board.id" class="shared-card">
+            <div class="card-header">
+              <div class="card-title">
+                <i class="fas fa-clipboard"></i>
                 <strong>{{ board.title }}</strong>
-                <span class="badge" :class="board.isOwner ? 'badge-owner' : 'badge-member'">
-                  {{ board.isOwner ? 'Proprietario' : 'Membro' }}
-                </span>
               </div>
+              <span class="badge" :class="board.isOwner ? 'badge-owner' : 'badge-shared'">
+                <i :class="board.isOwner ? 'fas fa-crown' : 'fas fa-users'"></i>
+                {{ board.isOwner ? 'Proprietario' : 'Condiviso' }}
+              </span>
             </div>
             
-            <div v-if="board.members.length > 0" class="members-list">
-              <div class="members-header">Condiviso con:</div>
-              <div v-for="member in board.members" :key="member.userId" class="member-item">
-                <div class="member-info">
-                  <i class="fas fa-user"></i>
-                  <span class="member-name">{{ member.username }}</span>
-                  <span class="member-role">{{ member.role }}</span>
-                </div>
-                <button 
-                  v-if="board.isOwner" 
-                  @click="removeBoardMember(board.id, member.userId)"
-                  class="btn-remove"
-                  title="Rimuovi utente"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
+            <div class="card-body">
+              <div class="members-count">
+                <i class="fas fa-user-friends"></i>
+                {{ board.members.length }} {{ board.members.length === 1 ? 'persona' : 'persone' }}
               </div>
-            </div>
-            <div v-else class="no-members">
-              Non condivisa con nessuno
+              
+              <div class="members-list">
+                <div v-for="member in board.members" :key="member.userId" class="member-row">
+                  <div class="member-info">
+                    <div class="member-avatar">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div class="member-details">
+                      <span class="member-name">{{ member.username }}</span>
+                      <span class="member-role-badge">{{ member.role }}</span>
+                    </div>
+                  </div>
+                  <button 
+                    v-if="board.isOwner" 
+                    @click="removeBoardMember(board.id, member.userId)"
+                    class="remove-btn"
+                    title="Rimuovi accesso"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Tag Condivisi -->
-      <div class="subsection">
-        <h4><i class="fas fa-tags"></i> Tag</h4>
-        <div v-if="tags.length === 0" class="no-items">
-          Nessun tag condiviso
-        </div>
-        <div v-else class="items-list">
-          <div v-for="tag in tags" :key="tag.id" class="item-card">
-            <div class="item-header">
-              <div class="item-title">
-                <div class="tag-color" :style="{ backgroundColor: tag.color }"></div>
+      <div v-if="tags.length > 0" class="shared-section">
+        <h4 class="subsection-title">
+          <i class="fas fa-tags"></i>
+          Tag ({{ tags.length }})
+        </h4>
+        <div class="items-grid">
+          <div v-for="tag in tags" :key="tag.id" class="shared-card">
+            <div class="card-header">
+              <div class="card-title">
+                <div class="tag-indicator" :style="{ backgroundColor: tag.color }"></div>
                 <strong>{{ tag.name }}</strong>
-                <span class="badge" :class="tag.isOwner ? 'badge-owner' : 'badge-member'">
-                  {{ tag.isOwner ? 'Proprietario' : 'Membro' }}
-                </span>
               </div>
+              <span class="badge" :class="tag.isOwner ? 'badge-owner' : 'badge-shared'">
+                <i :class="tag.isOwner ? 'fas fa-crown' : 'fas fa-users'"></i>
+                {{ tag.isOwner ? 'Proprietario' : 'Condiviso' }}
+              </span>
             </div>
             
-            <div v-if="tag.sharedWith.length > 0" class="members-list">
-              <div class="members-header">Condiviso con:</div>
-              <div v-for="member in tag.sharedWith" :key="member.userId" class="member-item">
-                <div class="member-info">
-                  <i class="fas fa-user"></i>
-                  <span class="member-name">{{ member.username }}</span>
-                  <span class="member-role">{{ member.role }}</span>
-                </div>
-                <button 
-                  v-if="tag.isOwner" 
-                  @click="removeTagMember(tag.id, member.userId)"
-                  class="btn-remove"
-                  title="Rimuovi utente"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
+            <div class="card-body">
+              <div class="members-count">
+                <i class="fas fa-user-friends"></i>
+                {{ tag.sharedWith.length }} {{ tag.sharedWith.length === 1 ? 'persona' : 'persone' }}
               </div>
-            </div>
-            <div v-else class="no-members">
-              Non condiviso con nessuno
+              
+              <div class="members-list">
+                <div v-for="member in tag.sharedWith" :key="member.userId" class="member-row">
+                  <div class="member-info">
+                    <div class="member-avatar">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div class="member-details">
+                      <span class="member-name">{{ member.username }}</span>
+                      <span class="member-role-badge">{{ member.role }}</span>
+                    </div>
+                  </div>
+                  <button 
+                    v-if="tag.isOwner" 
+                    @click="removeTagMember(tag.id, member.userId)"
+                    class="remove-btn"
+                    title="Rimuovi accesso"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -145,14 +173,14 @@ const loadSharedItems = async () => {
     tags.value = data.tags
   } catch (err: any) {
     console.error('Error loading shared items:', err)
-    error.value = err.response?.data?.error || 'Errore nel caricamento degli elementi condivisi'
+    error.value = 'Impossibile caricare gli elementi condivisi'
   } finally {
     loading.value = false
   }
 }
 
 const removeBoardMember = async (boardId: string, userId: string) => {
-  if (!confirm('Sei sicuro di voler rimuovere questo utente dalla bacheca?')) {
+  if (!confirm('Vuoi rimuovere l\'accesso a questa bacheca per questo utente?')) {
     return
   }
   
@@ -161,12 +189,12 @@ const removeBoardMember = async (boardId: string, userId: string) => {
     await loadSharedItems()
   } catch (error) {
     console.error('Error removing board member:', error)
-    alert('Errore durante la rimozione dell\'utente')
+    alert('Errore durante la rimozione')
   }
 }
 
 const removeTagMember = async (tagId: string, userId: string) => {
-  if (!confirm('Sei sicuro di voler rimuovere questo utente dal tag?')) {
+  if (!confirm('Vuoi rimuovere l\'accesso a questo tag per questo utente?')) {
     return
   }
   
@@ -175,7 +203,7 @@ const removeTagMember = async (tagId: string, userId: string) => {
     await loadSharedItems()
   } catch (error) {
     console.error('Error removing tag member:', error)
-    alert('Errore durante la rimozione dell\'utente')
+    alert('Errore durante la rimozione')
   }
 }
 
@@ -187,185 +215,290 @@ defineExpose({ loadSharedItems })
 </script>
 
 <style scoped>
-.shared-items-section {
-  margin-top: 3rem;
+.shared-items-container {
+  background: rgba(13, 72, 83, 0.95);
+  border-radius: 12px;
+  padding: 1.25rem;
+  color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-.loading {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
+.section-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 0.75rem;
+}
+
+.section-title i {
   font-size: 1.1rem;
 }
 
-.loading i {
-  margin-right: 0.5rem;
-}
-
-.error-message {
-  background: #ffebee;
-  color: #c62828;
-  padding: 1rem;
-  border-radius: 8px;
-  border-left: 4px solid #c62828;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-h3 {
-  color: var(--primary-color);
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.subsection {
-  margin-bottom: 2.5rem;
-}
-
-h4 {
-  color: #555;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.no-items {
-  color: #666;
-  font-style: italic;
-  padding: 1rem;
-  text-align: center;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.items-list {
+.loading-state,
+.error-state,
+.empty-state {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.loading-state i,
+.error-state i,
+.empty-state i {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.loading-state i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-state {
+  background: rgba(231, 76, 60, 0.2);
+  border-radius: 8px;
+  color: #ffcccb;
+}
+
+.empty-state {
+  opacity: 0.7;
+}
+
+.empty-state p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.empty-state small {
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.shared-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
-.item-card {
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 1.25rem;
-  transition: border-color 0.2s;
+.shared-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.item-card:hover {
-  border-color: var(--primary-color);
-}
-
-.item-header {
-  margin-bottom: 1rem;
-}
-
-.item-title {
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
+  gap: 0.4rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.25rem;
+}
+
+.items-grid {
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  font-size: 1.1rem;
 }
 
-.tag-color {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  flex-shrink: 0;
+@media (max-width: 1200px) {
+  .shared-content {
+    grid-template-columns: 1fr;
+  }
 }
 
-.badge {
-  padding: 0.25rem 0.75rem;
+.shared-card {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.badge-owner {
-  background: #e3f2fd;
-  color: #1976d2;
+.shared-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.badge-member {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.members-list {
-  border-top: 1px solid #e0e0e0;
-  padding-top: 1rem;
-}
-
-.members-header {
-  font-size: 0.9rem;
-  color: #666;
-  margin-bottom: 0.75rem;
-  font-weight: 600;
-}
-
-.member-item {
+.card-header {
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.card-title i {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.tag-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 16px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.badge i {
+  font-size: 0.65rem;
+}
+
+.badge-owner {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.badge-shared {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.card-body {
   padding: 0.75rem;
-  background: #f8f9fa;
-  border-radius: 6px;
+}
+
+.members-count {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
   margin-bottom: 0.5rem;
+}
+
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.member-row:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .member-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex: 1;
 }
 
-.member-info i {
-  color: #666;
+.member-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.member-details {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .member-name {
-  font-weight: 600;
-  color: #333;
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 
-.member-role {
-  padding: 0.2rem 0.5rem;
-  background: white;
-  border: 1px solid #ddd;
+.member-role-badge {
+  padding: 0.15rem 0.4rem;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  font-size: 0.85rem;
-  color: #666;
+  font-size: 0.7rem;
+  text-transform: lowercase;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.btn-remove {
-  padding: 0.5rem;
-  background: #ffebee;
-  color: #c62828;
+.remove-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: none;
-  border-radius: 4px;
+  background: rgba(231, 76, 60, 0.2);
+  color: #ff6b6b;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
 }
 
-.btn-remove:hover {
-  background: #ef5350;
+.remove-btn:hover {
+  background: #e74c3c;
   color: white;
+  transform: scale(1.1);
 }
 
-.no-members {
-  color: #999;
-  font-style: italic;
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
+@media (max-width: 768px) {
+  .shared-items-container {
+    padding: 1rem;
+  }
+  
+  .section-title {
+    font-size: 1.1rem;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }
 </style>

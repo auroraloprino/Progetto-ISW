@@ -192,52 +192,56 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     userList.map((u: any) => [u._id.toString(), { username: u.username, email: u.email }])
   );
   
-  // Format boards response
-  const boardsResponse = userBoards.map((b: any) => {
-    const isOwner = b.ownerId.equals(userId);
-    const members = (b.members ?? [])
-      .filter((m: any) => !m.userId.equals(userId))
-      .map((m: any) => ({
-        userId: m.userId.toString(),
-        role: m.role,
-        username: userMap.get(m.userId.toString())?.username || "Unknown",
-        email: userMap.get(m.userId.toString())?.email || ""
-      }));
-    
-    return {
-      id: b._id.toString(),
-      title: b.title,
-      slug: b.slug,
-      isOwner,
-      members
-    };
-  });
+  // Format boards response - SOLO quelle con altri membri
+  const boardsResponse = userBoards
+    .map((b: any) => {
+      const isOwner = b.ownerId.equals(userId);
+      const members = (b.members ?? [])
+        .filter((m: any) => !m.userId.equals(userId))
+        .map((m: any) => ({
+          userId: m.userId.toString(),
+          role: m.role,
+          username: userMap.get(m.userId.toString())?.username || "Unknown",
+          email: userMap.get(m.userId.toString())?.email || ""
+        }));
+      
+      return {
+        id: b._id.toString(),
+        title: b.title,
+        slug: b.slug,
+        isOwner,
+        members
+      };
+    })
+    .filter((b: any) => b.members.length > 0); // Mostra solo se condivisa con altri
   
-  // Format tags response
-  const tagsResponse = userTags.map((t: any) => {
-    const isOwner = t.ownerId.equals(userId);
-    const sharedWith = (t.sharedWith ?? [])
-      .map((m: any) => {
-        const uid = m.userId ? m.userId : m;
-        if (uid.equals(userId)) return null;
-        
-        return {
-          userId: uid.toString(),
-          role: m.role || "editor",
-          username: userMap.get(uid.toString())?.username || "Unknown",
-          email: userMap.get(uid.toString())?.email || ""
-        };
-      })
-      .filter((m: any) => m !== null);
-    
-    return {
-      id: t._id.toString(),
-      name: t.name,
-      color: t.color,
-      isOwner,
-      sharedWith
-    };
-  });
+  // Format tags response - SOLO quelli condivisi con altri
+  const tagsResponse = userTags
+    .map((t: any) => {
+      const isOwner = t.ownerId.equals(userId);
+      const sharedWith = (t.sharedWith ?? [])
+        .map((m: any) => {
+          const uid = m.userId ? m.userId : m;
+          if (uid.equals(userId)) return null;
+          
+          return {
+            userId: uid.toString(),
+            role: m.role || "editor",
+            username: userMap.get(uid.toString())?.username || "Unknown",
+            email: userMap.get(uid.toString())?.email || ""
+          };
+        })
+        .filter((m: any) => m !== null);
+      
+      return {
+        id: t._id.toString(),
+        name: t.name,
+        color: t.color,
+        isOwner,
+        sharedWith
+      };
+    })
+    .filter((t: any) => t.sharedWith.length > 0); // Mostra solo se condiviso con altri
   
   res.json({
     boards: boardsResponse,

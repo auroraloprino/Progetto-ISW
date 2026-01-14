@@ -12,11 +12,20 @@
   </nav>
 
   <div class="account-wrapper">
-    <div class="account-content">
+    <!-- Notifiche: larghezza piena -->
+    <div class="full-width">
       <NotificationsArea />
-      <InvitesComponent />
+    </div>
+    
+    <!-- Elementi Condivisi: larghezza piena -->
+    <div class="full-width">
       <SharedItemsComponent />
-
+    </div>
+    
+    <!-- Inviti e Account: affiancati -->
+    <div class="two-columns">
+      <InvitesComponent />
+      
       <div class="account-card">
         <div class="profile-header">
           <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
@@ -87,7 +96,6 @@
         <button class="logout-btn" @click="logoutAndGo">LOGOUT</button>
       <button class="delete-account-btn" @click="deleteAccountAndData"> ELIMINA ACCOUNT </button>
       </div>
-
     </div>
   </div>
 </template>
@@ -213,6 +221,33 @@ async function deleteAccountAndData() {
 </script>
 
 <style scoped>
+.account-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem;
+  margin-top: 100px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
 .account-badge {
   position: absolute;
   top: 0.3rem;

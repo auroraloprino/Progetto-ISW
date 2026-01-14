@@ -197,9 +197,18 @@ calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) =
     return res.status(403).json({ error: "Only owner can unshare tag" });
   }
 
+  const uidToRemove = new ObjectId(userIdToRemove);
+  
+  // Rimuovi entrambi i formati: { userId: ObjectId, role: "..." } e ObjectId diretto
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
-    { $pull: { sharedWith: { userId: new ObjectId(userIdToRemove) } } as any }
+    { $pull: { sharedWith: { userId: uidToRemove } } as any }
+  );
+  
+  // Rimuovi anche il formato vecchio (ObjectId diretto)
+  await tags.updateOne(
+    { _id: new ObjectId(tagId) },
+    { $pull: { sharedWith: uidToRemove } as any }
   );
 
   res.json({ ok: true });
