@@ -11,20 +11,27 @@ calendarRouter.get("/tags", async (req: AuthRequest, res) => {
 
   const list = await tags
     .find({
-      $or: [{ ownerId: uid }, { sharedWith: uid }],
+      $or: [{ ownerId: uid }, { "sharedWith.userId": uid }, { sharedWith: uid }],
     })
     .toArray();
 
   res.json(
     list.map((t: any) => {
       const isOwner = t.ownerId.equals(uid);
+      const sharedWith = (t.sharedWith ?? []).map((m: any) => {
+        if (m.userId) {
+          return { userId: m.userId.toString(), role: m.role };
+        } else {
+          return { userId: m.toString(), role: "editor" };
+        }
+      });
       return {
         id: t._id.toString(),
         name: t.name,
         color: t.color,
         visible: isOwner ? (t.visible ?? true) : true,
         ownerId: t.ownerId.toString(),
-        sharedWith: (t.sharedWith ?? []).map((id: ObjectId) => id.toString()),
+        sharedWith,
       };
     })
   );
@@ -106,8 +113,9 @@ calendarRouter.delete("/tags/:id", async (req: AuthRequest, res) => {
 
 calendarRouter.post("/tags/:id/share", async (req: AuthRequest, res) => {
   const tagId = req.params.id;
-  const { identifier } = req.body ?? {};
-  if (!identifier) return res.status(400).json({ error: "Missing identifier" });
+  const { identifier, role } = req.body ?? {};
+  if (!identifier || !role) return res.status(400).json({ error: "Missing fields" });
+  if (!["editor", "viewer"].includes(role)) return res.status(400).json({ error: "Role must be editor/viewer" });
 
   const tags = dbService.getDb().collection("tags");
   const tag = await tags.findOne({ _id: new ObjectId(tagId) });
@@ -126,7 +134,7 @@ calendarRouter.post("/tags/:id/share", async (req: AuthRequest, res) => {
 
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
-    { $addToSet: { sharedWith: user._id } }
+    { $addToSet: { sharedWith: { userId: user._id, role } } }
   );
 
   res.json({ ok: true });
@@ -158,7 +166,7 @@ calendarRouter.get("/events", async (req: AuthRequest, res) => {
   const tags = dbService.getDb().collection("tags");
 
   const sharedTags = await tags
-    .find({ sharedWith: uid })
+    .find({ $or: [{ "sharedWith.userId": uid }, { sharedWith: uid }] })
     .toArray();
   const sharedTagIds = sharedTags.map(t => t._id);
 
@@ -227,11 +235,27 @@ calendarRouter.put("/events/:id", async (req: AuthRequest, res) => {
   const { title, datetime, endDatetime, type, description, tag, allDay } = req.body ?? {};
 
   const events = dbService.getDb().collection("events");
+  const tags = dbService.getDb().collection("tags");
   const event = await events.findOne({ _id: new ObjectId(eventId) });
 
   if (!event) return res.status(404).json({ error: "Event not found" });
-  if (!event.userId.equals(new ObjectId(req.userId))) {
-    return res.status(403).json({ error: "Not your event" });
+  
+  const uid = new ObjectId(req.userId);
+  const isCreator = event.userId.equals(uid);
+  
+  let canEdit = false;
+  if (event.tag) {
+    const eventTag = await tags.findOne({ _id: event.tag });
+    if (eventTag) {
+      const isOwner = eventTag.ownerId.equals(uid);
+      const member = (eventTag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
+      const role = isOwner ? "owner" : member?.role;
+      canEdit = role === "owner" || role === "editor";
+    }
+  }
+  
+  if (!isCreator && !canEdit) {
+    return res.status(403).json({ error: "Not authorized" });
   }
 
   const update: any = {};
@@ -261,13 +285,28 @@ calendarRouter.put("/events/:id", async (req: AuthRequest, res) => {
 
 calendarRouter.delete("/events/:id", async (req: AuthRequest, res) => {
   const events = dbService.getDb().collection("events");
+  const tags = dbService.getDb().collection("tags");
   const eventId = new ObjectId(req.params.id);
   const uid = new ObjectId(req.userId);
 
   const event = await events.findOne({ _id: eventId });
   if (!event) return res.status(404).json({ error: "Event not found" });
-  if (!event.userId.equals(uid)) {
-    return res.status(403).json({ error: "Not your event" });
+  
+  const isCreator = event.userId.equals(uid);
+  
+  let canEdit = false;
+  if (event.tag) {
+    const eventTag = await tags.findOne({ _id: event.tag });
+    if (eventTag) {
+      const isOwner = eventTag.ownerId.equals(uid);
+      const member = (eventTag.sharedWith ?? []).find((m: any) => m.userId.equals(uid));
+      const role = isOwner ? "owner" : member?.role;
+      canEdit = role === "owner" || role === "editor";
+    }
+  }
+  
+  if (!isCreator && !canEdit) {
+    return res.status(403).json({ error: "Not authorized" });
   }
 
   await events.deleteOne({ _id: eventId });

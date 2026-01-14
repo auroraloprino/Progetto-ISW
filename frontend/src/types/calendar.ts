@@ -4,7 +4,7 @@ export interface Tag {
   color: string
   visible: boolean
   ownerId: string
-  sharedWith: string[]
+  sharedWith: { userId: string; role: string }[]
 }
 
 export interface Event {

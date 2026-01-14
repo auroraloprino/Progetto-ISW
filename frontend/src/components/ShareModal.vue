@@ -15,7 +15,7 @@
           >
         </div>
         
-        <div v-if="type === 'board'" class="form-group">
+        <div class="form-group">
           <label>Ruolo</label>
           <div class="radio-group">
             <label class="radio-label">
@@ -85,11 +85,8 @@ const share = async () => {
     const payload: any = {
       type: props.type,
       itemId: props.itemId,
-      identifier: identifier.value
-    }
-    
-    if (props.type === 'board') {
-      payload.role = role.value
+      identifier: identifier.value,
+      role: role.value
     }
     
     console.log('Sending invite:', payload)
