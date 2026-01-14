@@ -11,7 +11,7 @@ import Budget from '../views/Budget.vue'
 import { currentUser } from '../auth/auth'
 
 const routes = [
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: '/calendario' },
 
   {
     path: '/calendario',

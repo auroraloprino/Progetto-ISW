@@ -43,7 +43,7 @@ const handleLogin = async () => {
       errorMsg.value = "Credenziali non valide"
       return
     }
-    router.push("/bacheche")
+    router.push("/calendario")
   } catch (e) {
     console.error(e)
     errorMsg.value = "Errore di connessione"
