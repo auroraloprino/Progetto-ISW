@@ -3,6 +3,7 @@ import cors from "cors";
 import { dbService } from "./database";
 import { authRouter } from "./routes/auth.routes";
 import { boardsRouter } from "./routes/boards.routes";
+import { calendarRouter } from "./routes/calendar.routes";
 import { requireAuth } from "./middleware/requireAuth";
 
 const app = express();
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/boards", requireAuth, boardsRouter);
+app.use("/api/calendar", requireAuth, calendarRouter);
 
 async function startServer() {
   try {
