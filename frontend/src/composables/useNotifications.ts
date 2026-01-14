@@ -1,9 +1,10 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed } from 'vue';
 import type { Event, Tag } from '../types/calendar';
+import { api } from '../services/api';
 
 export interface Notification {
   id: string;
-  eventId: number;
+  eventId: string;
   title: string;
   message: string;
   datetime: string;
@@ -15,9 +16,16 @@ export interface Notification {
 const NOTIFICATIONS_KEY = 'chronio_notifications';
 const CHECK_INTERVAL = 60000;
 
+const globalNotifications = ref<Notification[]>([]);
+const globalUnreadCount = ref(0);
+
+const updateGlobalUnreadCount = () => {
+  globalUnreadCount.value = globalNotifications.value.filter(n => !n.read && n.type === 'warning').length;
+};
+
 export function useNotifications() {
-  const notifications = ref<Notification[]>([]);
-  const events = ref<{ [key: string]: Event[] }>({});
+  const notifications = computed(() => globalNotifications.value);
+  const events = ref<Event[]>([]);
   const tags = ref<Tag[]>([]);
   let checkInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -26,63 +34,52 @@ export function useNotifications() {
       const saved = localStorage.getItem(NOTIFICATIONS_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        notifications.value = parsed.map((n: any) => ({
+        globalNotifications.value = parsed.map((n: any) => ({
           ...n,
           createdAt: new Date(n.createdAt)
         }));
+        updateGlobalUnreadCount();
       }
     } catch (error) {
-      notifications.value = [];
+      globalNotifications.value = [];
+      updateGlobalUnreadCount();
     }
   };
 
   const saveNotifications = () => {
     try {
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications.value));
+      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(globalNotifications.value));
+      updateGlobalUnreadCount();
     } catch (error) {
       console.error('Error saving notifications:', error);
     }
   };
 
-  const loadEvents = () => {
+  const loadEvents = async () => {
     try {
-      const savedEvents = localStorage.getItem('calendar_events');
-      const savedTags = localStorage.getItem('calendar_tags');
-      
-      if (savedEvents) {
-        const data = JSON.parse(savedEvents);
-        events.value = data.events || {};
-      }
-      
-      if (savedTags) {
-        const data = JSON.parse(savedTags);
-        tags.value = data.tags || [];
-      }
+      const [eventsRes, tagsRes] = await Promise.all([
+        api.get('/calendar/events'),
+        api.get('/calendar/tags')
+      ]);
+      events.value = eventsRes.data;
+      tags.value = tagsRes.data;
     } catch (error) {
       console.error('Error loading events:', error);
     }
   };
 
-  const getTagById = (tagId?: number): Tag | undefined => {
+  const getTagById = (tagId?: string): Tag | undefined => {
     if (!tagId) return undefined;
     return tags.value.find(t => t.id === tagId);
   };
 
-  const checkUpcomingEvents = () => {
-    loadEvents();
+  const checkUpcomingEvents = async () => {
+    await loadEvents();
     
     const now = new Date();
-    const uniqueEvents = new Map<number, Event>();
-    
-    Object.values(events.value).forEach(dayEvents => {
-      dayEvents.forEach(event => {
-        uniqueEvents.set(event.id, event);
-      });
-    });
-
     const newNotifications: Notification[] = [];
 
-    uniqueEvents.forEach(event => {
+    events.value.forEach(event => {
       const eventDate = new Date(event.datetime);
       const timeDiff = eventDate.getTime() - now.getTime();
       const minutesDiff = Math.floor(timeDiff / 60000);
@@ -121,7 +118,6 @@ export function useNotifications() {
           };
           newNotifications.push(newNotif);
           
-          // Show browser notification for new 30-minute warnings
           if (Notification.permission === 'granted') {
             new Notification(`${event.title}`, {
               body: `${timeMessage}${tag ? ` • ${tag.name}` : ''}`,
@@ -150,7 +146,7 @@ export function useNotifications() {
       }
     });
 
-    notifications.value = newNotifications.filter(n => {
+    globalNotifications.value = newNotifications.filter(n => {
       const eventDate = new Date(n.datetime);
       return eventDate > now;
     });
@@ -159,7 +155,7 @@ export function useNotifications() {
   };
 
   const markAsRead = (notificationId: string) => {
-    const notification = notifications.value.find(n => n.id === notificationId);
+    const notification = globalNotifications.value.find(n => n.id === notificationId);
     if (notification) {
       notification.read = true;
       saveNotifications();
@@ -167,17 +163,17 @@ export function useNotifications() {
   };
 
   const markAllAsRead = () => {
-    notifications.value.forEach(n => n.read = true);
+    globalNotifications.value.forEach(n => n.read = true);
     saveNotifications();
   };
 
   const deleteNotification = (notificationId: string) => {
-    notifications.value = notifications.value.filter(n => n.id !== notificationId);
+    globalNotifications.value = globalNotifications.value.filter(n => n.id !== notificationId);
     saveNotifications();
   };
 
   const clearAllNotifications = () => {
-    notifications.value = [];
+    globalNotifications.value = [];
     saveNotifications();
   };
 
@@ -185,13 +181,10 @@ export function useNotifications() {
     checkUpcomingEvents();
   };
 
-  const unreadCount = computed(() => {
-    const count = notifications.value.filter(n => !n.read && n.type === 'warning').length;
-    return count;
-  });
+  const unreadCount = computed(() => globalUnreadCount.value);
 
   const sortedNotifications = computed(() => {
-    return [...notifications.value].sort((a, b) => {
+    return [...globalNotifications.value].sort((a, b) => {
       if (a.read !== b.read) {
         return a.read ? 1 : -1;
       }
@@ -256,14 +249,6 @@ export function useNotifications() {
       checkInterval = null;
     }
   };
-
-  onMounted(() => {
-    initialize();
-  });
-
-  onUnmounted(() => {
-    cleanup();
-  });
 
   return {
     notifications: sortedNotifications,

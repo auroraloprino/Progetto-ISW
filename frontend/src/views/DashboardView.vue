@@ -6,7 +6,7 @@
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account
-        <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
+        <span v-if="unreadCount > 0" class="account-badge">{{ unreadCount }}</span>
       </RouterLink>
     </div>
   </nav>
@@ -104,7 +104,7 @@ const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
-const { notifications } = useNotifications()
+const { notifications, unreadCount } = useNotifications()
 
 const newUsername = ref("")
 const newEmail = ref("")
@@ -122,19 +122,6 @@ onMounted(async () => {
 onMounted(() => {
   document.body.classList.add('dashboard-page')
   currentThemeMode.value = getCurrentTheme()
-})
-
-const todayEventsCount = computed(() => {
-  return notifications.value.filter(n => {
-    if (n.read) return false
-    
-    const eventDate = new Date(n.datetime)
-    const now = new Date()
-    const timeDiff = eventDate.getTime() - now.getTime()
-    const minutesDiff = Math.floor(timeDiff / 60000)
-    
-    return minutesDiff <= 30 && minutesDiff >= 0
-  }).length
 })
 
 function logoutAndGo() {
