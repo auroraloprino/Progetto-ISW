@@ -176,7 +176,7 @@ calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) =
 
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
-    { $pull: { sharedWith: new ObjectId(userIdToRemove) } as any }
+    { $pull: { sharedWith: { userId: new ObjectId(userIdToRemove) } } } as any
   );
 
   res.json({ ok: true });
