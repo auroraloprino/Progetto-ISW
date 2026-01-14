@@ -1,149 +1,61 @@
+import { api } from './api'
 import type { Tag, Event, TagForm } from '../types/calendar'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
-const TAGS_KEY = 'calendar_tags'
-const EVENTS_KEY = 'calendar_events'
 
 export const calendarAPI = {
   async getTags(): Promise<{ tags: Tag[], nextId: number }> {
-    try {
-      const saved = localStorage.getItem(TAGS_KEY)
-      return saved ? JSON.parse(saved) : { tags: [], nextId: 1 }
-    } catch {
-      return { tags: [], nextId: 1 }
-    }
+    const { data } = await api.get('/calendar/tags')
+    return { tags: data, nextId: 0 }
   },
 
   async createTag(tagData: TagForm): Promise<Tag> {
-    const data = await this.getTags()
-    const newTag: Tag = {
-      id: data.nextId++,
-      name: tagData.name,
-      color: tagData.color,
-      visible: true
-    }
-    data.tags.push(newTag)
-    localStorage.setItem(TAGS_KEY, JSON.stringify(data))
-    return newTag
+    const { data } = await api.post('/calendar/tags', tagData)
+    return data
   },
 
-  async updateTag(id: number, tagData: Partial<TagForm>): Promise<Tag | null> {
-    const data = await this.getTags()
-    const tag = data.tags.find(t => t.id === id)
-    if (!tag) return null
-    
-    Object.assign(tag, tagData)
-    localStorage.setItem(TAGS_KEY, JSON.stringify(data))
-    return tag
+  async updateTag(id: string | number, tagData: Partial<TagForm> & { visible?: boolean }): Promise<Tag | null> {
+    const { data } = await api.put(`/calendar/tags/${id}`, tagData)
+    return data
   },
 
-  async deleteTag(id: number): Promise<boolean> {
-    const data = await this.getTags()
-    const index = data.tags.findIndex(t => t.id === id)
-    if (index === -1) return false
-    
-    data.tags.splice(index, 1)
-    localStorage.setItem(TAGS_KEY, JSON.stringify(data))
+  async deleteTag(id: string | number): Promise<boolean> {
+    await api.delete(`/calendar/tags/${id}`)
     return true
   },
 
   async getEvents(): Promise<{ events: { [key: string]: Event[] }, nextId: number }> {
-    try {
-      const saved = localStorage.getItem(EVENTS_KEY)
-      return saved ? JSON.parse(saved) : { events: {}, nextId: 1 }
-    } catch {
-      return { events: {}, nextId: 1 }
-    }
+    const { data } = await api.get('/calendar/events')
+    const eventsByDate: { [key: string]: Event[] } = {}
+    
+    data.forEach((event: Event) => {
+      const startDate = new Date(event.datetime)
+      const endDate = event.endDatetime ? new Date(event.endDatetime) : startDate
+      
+      const currentDate = new Date(startDate)
+      while (currentDate <= endDate) {
+        const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`
+        if (!eventsByDate[dateKey]) {
+          eventsByDate[dateKey] = []
+        }
+        eventsByDate[dateKey].push(event)
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+    })
+    
+    return { events: eventsByDate, nextId: 0 }
   },
 
   async createEvent(eventData: Omit<Event, 'id'>): Promise<Event> {
-    const data = await this.getEvents()
-    const newEvent: Event = {
-      ...eventData,
-      id: data.nextId++
-    }
-    
-    const startDate = new Date(eventData.datetime)
-    const endDate = eventData.endDatetime ? new Date(eventData.endDatetime) : startDate
-    
-    const currentDate = new Date(startDate)
-    while (currentDate <= endDate) {
-      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`
-      
-      if (!data.events[dateKey]) {
-        data.events[dateKey] = []
-      }
-      
-      data.events[dateKey].push(newEvent)
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-    
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(data))
-    return newEvent
+    const { data } = await api.post('/calendar/events', eventData)
+    return data
   },
 
-  async updateEvent(id: number, eventData: Partial<Event>): Promise<Event | null> {
-    const data = await this.getEvents()
-    let foundEvent: Event | null = null
-    
-    for (const dateKey in data.events) {
-      const events = data.events[dateKey]
-      const eventIndex = events.findIndex(e => e.id === id)
-      if (eventIndex !== -1) {
-        foundEvent = events[eventIndex]
-        data.events[dateKey] = events.filter(e => e.id !== id)
-        if (data.events[dateKey].length === 0) {
-          delete data.events[dateKey]
-        }
-        break
-      }
-    }
-    
-    if (!foundEvent) return null
-    
-    const updatedEvent = { ...foundEvent, ...eventData }
-    
-    const startDate = new Date(updatedEvent.datetime)
-    const endDate = updatedEvent.endDatetime ? new Date(updatedEvent.endDatetime) : startDate
-    
-    const currentDate = new Date(startDate)
-    while (currentDate <= endDate) {
-      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`
-      
-      if (!data.events[dateKey]) {
-        data.events[dateKey] = []
-      }
-      
-      data.events[dateKey].push(updatedEvent)
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-    
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(data))
-    return updatedEvent
+  async updateEvent(id: string | number, eventData: Partial<Event>): Promise<Event | null> {
+    const { data } = await api.put(`/calendar/events/${id}`, eventData)
+    return data
   },
 
-  async deleteEvent(id: number): Promise<boolean> {
-    const data = await this.getEvents()
-    let found = false
-    
-    for (const dateKey in data.events) {
-      const events = data.events[dateKey]
-      const filteredEvents = events.filter(e => e.id !== id)
-      if (filteredEvents.length !== events.length) {
-        found = true
-        if (filteredEvents.length === 0) {
-          delete data.events[dateKey]
-        } else {
-          data.events[dateKey] = filteredEvents
-        }
-      }
-    }
-    
-    if (found) {
-      localStorage.setItem(EVENTS_KEY, JSON.stringify(data))
-    }
-    
-    return found
+  async deleteEvent(id: string | number): Promise<boolean> {
+    await api.delete(`/calendar/events/${id}`)
+    return true
   }
 }

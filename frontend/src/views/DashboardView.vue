@@ -13,10 +13,9 @@
 
   <div class="account-wrapper">
     <div class="account-content">
-      <!-- Notifications Area - LEFT -->
       <NotificationsArea />
+      <InvitesComponent />
 
-      <!-- Account Card - RIGHT -->
       <div class="account-card">
         <div class="avatar" @click="fileInput?.click()" :class="{ uploading: isUploading }">
           <img v-if="user?.profileImage" :src="user.profileImage" alt="Profilo" />
@@ -93,6 +92,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
+import InvitesComponent from '../components/InvitesComponent.vue'
 import { currentUser, logout, updateUser, changePassword, type User } from '../auth/auth'
 import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'

@@ -1,18 +1,20 @@
 export interface Tag {
-  id: number
+  id: string
   name: string
   color: string
   visible: boolean
+  ownerId: string
+  sharedWith: string[]
 }
 
 export interface Event {
-  id: number
+  id: string
   title: string
   datetime: string
   endDatetime?: string
   type: string
   description: string
-  tag?: number
+  tag?: string
   allDay: boolean
 }
 

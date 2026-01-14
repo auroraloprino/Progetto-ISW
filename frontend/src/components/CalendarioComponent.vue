@@ -39,6 +39,9 @@
               </div>
               <div class="tag-color" :style="{ background: tag.color }"></div>
               <span class="tag-name">{{ tag.name }}</span>
+              <button @click="openShareModal(tag.id)" class="share-tag-btn">
+                <i class="fas fa-share-alt"></i>
+              </button>
               <button @click="deleteTag(tag.id)" class="delete-tag-btn">
                 <i class="fas fa-trash"></i>
               </button>
@@ -351,6 +354,14 @@
       </div>
     </div>
   </div>
+
+  <ShareModal 
+    :show="showShareModal" 
+    type="tag" 
+    :itemId="shareItemId"
+    @close="showShareModal = false"
+    @success="handleShareSuccess"
+  />
 </template>
 
 <script setup lang="ts">
@@ -358,6 +369,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useNotifications } from '../composables/useNotifications'
 import { useCalendar } from '../composables/useCalendar'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
+import ShareModal from './ShareModal.vue'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
                 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
@@ -391,6 +403,8 @@ const tagsVisible = ref(true)
 const showEventModal = ref(false)
 const showTagModal = ref(false)
 const showConfirmModal = ref(false)
+const showShareModal = ref(false)
+const shareItemId = ref('')
 
 const eventForm = ref<EventForm>({
   title: '',
@@ -407,8 +421,8 @@ const tagForm = ref<TagForm>({
   color: '#0d4853'
 })
 
-const editingEventId = ref<number | null>(null)
-const editingTagId = ref<number | null>(null)
+const editingEventId = ref<string | null>(null)
+const editingTagId = ref<string | null>(null)
 
 const confirmModal = ref<ConfirmModal>({
   title: '',
@@ -698,7 +712,7 @@ const toggleTagsVisibility = () => {
   tagsVisible.value = !tagsVisible.value
 }
 
-const toggleTag = async (tagId: number) => {
+const toggleTag = async (tagId: string) => {
   await toggleTagVisibility(tagId)
 }
 
@@ -712,7 +726,7 @@ const closeTagModal = () => {
   showTagModal.value = false
 }
 
-const editTag = (tagId: number) => {
+const editTag = (tagId: string) => {
   const tag = tags.value.find(t => t.id === tagId)
   if (!tag) return
   
@@ -736,7 +750,7 @@ const saveTag = async () => {
   }
 }
 
-const deleteTag = (tagId: number) => {
+const deleteTag = (tagId: string) => {
   showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', async () => {
     try {
       await deleteTagAPI(tagId)
@@ -825,7 +839,7 @@ const closeEventModal = () => {
   showEventModal.value = false
 }
 
-const editEvent = (dateKey: string, eventId: number) => {
+const editEvent = (dateKey: string, eventId: string) => {
   const event = events.value[dateKey]?.find(e => e.id === eventId)
   if (!event) return
   
@@ -890,7 +904,7 @@ const closeConfirmModal = () => {
   confirmModal.value.callback = null
 }
 
-const getEventColor = (tagId?: number): string => {
+const getEventColor = (tagId?: string): string => {
   if (!tagId) return '#0d4853'
   const tag = tags.value.find(t => t.id === tagId)
   return tag?.visible ? tag.color : '#0d4853'
@@ -935,7 +949,7 @@ const getAllDayEvents = (): Event[] => {
   })
 }
 
-const deleteEventFromSidebar = (eventId: number) => {
+const deleteEventFromSidebar = (eventId: string) => {
   showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
     try {
       await deleteEventAPI(eventId)
@@ -963,6 +977,15 @@ const getWeekAllDayEvents = (dateKey: string): Event[] => {
     const tag = tags.value.find(t => t.id === event.tag)
     return !event.tag || (tag?.visible)
   })
+}
+
+const openShareModal = (tagId: string) => {
+  shareItemId.value = tagId.toString()
+  showShareModal.value = true
+}
+
+const handleShareSuccess = () => {
+  console.log('Tag condiviso con successo')
 }
 
 watch(() => eventForm.value.allDay, (newVal) => {
@@ -1081,5 +1104,28 @@ onUnmounted(() => {
 
 .nav-links a {
   position: relative;
+}
+
+.share-tag-btn {
+  background: rgba(52, 152, 219, 0.8);
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.share-tag-btn:hover {
+  background: rgba(52, 152, 219, 1);
+}
+
+.share-tag-btn i {
+  color: white;
+  font-size: 11px;
 }
 </style>

@@ -50,6 +50,9 @@
       <button class="btn-back-to-boards" @click="goBackToBacheche">
         <i class="fas fa-arrow-left"></i> Torna alle Bacheche
       </button>
+      <button class="btn-share-board" @click="openShareModal">
+        <i class="fas fa-share-alt"></i> Condividi
+      </button>
     </div>
 
     <div class="columns-container">
@@ -132,12 +135,21 @@
     <h1>Bacheca non trovata</h1>
     <RouterLink to="/bacheche" class="btn-back">Torna alle bacheche</RouterLink>
   </div>
+
+  <ShareModal 
+    :show="showShareModal" 
+    type="board" 
+    :itemId="board?.id || ''"
+    @close="showShareModal = false"
+    @success="handleShareSuccess"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
+import ShareModal from '../components/ShareModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -165,6 +177,7 @@ const boardTitle = ref('');
 const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
+const showShareModal = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const boardSlug = computed(() => {
@@ -326,6 +339,14 @@ const handleDrop = async (event: DragEvent, targetColumnId: string) => {
   draggedTask = null;
 };
 
+const openShareModal = () => {
+  showShareModal.value = true;
+};
+
+const handleShareSuccess = () => {
+  console.log('Bacheca condivisa con successo');
+};
+
 onMounted(async () => {
   await loadBoards();
   if (!board.value) {
@@ -474,6 +495,28 @@ onMounted(async () => {
   background: rgba(13, 72, 83, 1);
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
+}
+
+.btn-share-board {
+  background: rgba(52, 152, 219, 0.8);
+  color: white;
+  border: 2px solid #3498db;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-share-board:hover {
+  background: rgba(52, 152, 219, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
 .btn-add-column {

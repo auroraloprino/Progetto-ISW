@@ -5,7 +5,6 @@ import type { AuthRequest } from "../middleware/requireAuth";
 
 export const boardsRouter = Router();
 
-// helper: verifica che l'utente sia owner/editor
 async function requireBoardWriteAccess(boardId: string, userId: string) {
   const boards = dbService.getDb().collection("boards");
   const board = await boards.findOne({ _id: new ObjectId(boardId) });
@@ -22,7 +21,6 @@ async function requireBoardWriteAccess(boardId: string, userId: string) {
   return { ok: true as const, board };
 }
 
-// LISTA boards visibili (owner o member)
 boardsRouter.get("/", async (req: AuthRequest, res) => {
   const uid = new ObjectId(req.userId);
   const boards = dbService.getDb().collection("boards");
@@ -46,7 +44,6 @@ boardsRouter.get("/", async (req: AuthRequest, res) => {
   );
 });
 
-// CREA board
 boardsRouter.post("/", async (req: AuthRequest, res) => {
   const { title, slug } = req.body ?? {};
   if (!title || !slug) return res.status(400).json({ error: "Missing fields" });
@@ -77,7 +74,6 @@ boardsRouter.post("/", async (req: AuthRequest, res) => {
   });
 });
 
-// UPDATE board intera (titolo/slug/columns/tasks)
 boardsRouter.put("/:id", async (req: AuthRequest, res) => {
   const boardId = req.params.id;
   const check = await requireBoardWriteAccess(boardId, req.userId!);
@@ -106,7 +102,6 @@ boardsRouter.put("/:id", async (req: AuthRequest, res) => {
   });
 });
 
-// DELETE board (solo owner)
 boardsRouter.delete("/:id", async (req: AuthRequest, res) => {
   const boards = dbService.getDb().collection("boards");
   const uid = new ObjectId(req.userId);
@@ -120,7 +115,6 @@ boardsRouter.delete("/:id", async (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
-// AGGIUNGI membro (sharing) con username o email
 boardsRouter.post("/:id/members", async (req: AuthRequest, res) => {
   const boardId = req.params.id;
   const check = await requireBoardWriteAccess(boardId, req.userId!);
@@ -138,6 +132,26 @@ boardsRouter.post("/:id/members", async (req: AuthRequest, res) => {
   await boards.updateOne(
     { _id: new ObjectId(boardId) },
     { $addToSet: { members: { userId: user._id, role } } }
+  );
+
+  res.json({ ok: true });
+});
+
+boardsRouter.delete("/:id/members/:userId", async (req: AuthRequest, res) => {
+  const boardId = req.params.id;
+  const userIdToRemove = req.params.userId;
+
+  const boards = dbService.getDb().collection("boards");
+  const board = await boards.findOne({ _id: new ObjectId(boardId) });
+
+  if (!board) return res.status(404).json({ error: "Board not found" });
+  if (!board.ownerId.equals(new ObjectId(req.userId))) {
+    return res.status(403).json({ error: "Only owner can remove members" });
+  }
+
+  await boards.updateOne(
+    { _id: new ObjectId(boardId) },
+    { $pull: { members: { userId: new ObjectId(userIdToRemove) } } as any }
   );
 
   res.json({ ok: true });

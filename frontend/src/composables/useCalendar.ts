@@ -52,7 +52,7 @@ export function useCalendar() {
     }
   }
 
-  const updateTag = async (id: number, tagData: Partial<TagForm>) => {
+  const updateTag = async (id: string, tagData: Partial<TagForm> & { visible?: boolean }) => {
     try {
       const updatedTag = await calendarAPI.updateTag(id, tagData)
       if (updatedTag) {
@@ -69,7 +69,7 @@ export function useCalendar() {
     }
   }
 
-  const deleteTag = async (id: number) => {
+  const deleteTag = async (id: string) => {
     try {
       const success = await calendarAPI.deleteTag(id)
       if (success) {
@@ -98,7 +98,7 @@ export function useCalendar() {
         endDatetime: eventData.endDatetime || undefined,
         type: eventData.type,
         description: eventData.description,
-        tag: eventData.tag ? Number(eventData.tag) : undefined,
+        tag: eventData.tag ? String(eventData.tag) : undefined,
         allDay: eventData.allDay
       }
       
@@ -128,7 +128,7 @@ export function useCalendar() {
     }
   }
 
-  const updateEvent = async (id: number, eventData: Partial<Event>) => {
+  const updateEvent = async (id: string, eventData: Partial<Event>) => {
     try {
       for (const dateKey in events.value) {
         events.value[dateKey] = events.value[dateKey].filter(e => e.id !== id)
@@ -164,7 +164,7 @@ export function useCalendar() {
     }
   }
 
-  const deleteEvent = async (id: number) => {
+  const deleteEvent = async (id: string) => {
     try {
       const success = await calendarAPI.deleteEvent(id)
       
@@ -185,14 +185,14 @@ export function useCalendar() {
     }
   }
 
-  const toggleTagVisibility = async (id: number) => {
+  const toggleTagVisibility = async (id: string) => {
     const tag = tags.value.find(t => t.id === id)
     if (tag) {
       await updateTag(id, { visible: !tag.visible })
     }
   }
 
-  const getTagById = (id?: number): Tag | undefined => {
+  const getTagById = (id?: string): Tag | undefined => {
     if (!id) return undefined
     return tags.value.find(t => t.id === id)
   }
