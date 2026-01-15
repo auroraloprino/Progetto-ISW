@@ -1096,14 +1096,15 @@ onMounted(() => {
   })
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
-  document.body.classList.add('no-scroll')
-  window.scrollTo(0, 0)
+  document.documentElement.style.overflow = 'hidden'
+  document.body.style.overflow = 'hidden'
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutside)
-  document.body.classList.remove('no-scroll')
+  document.documentElement.style.overflow = ''
+  document.body.style.overflow = ''
 })
 </script>
 

@@ -16,10 +16,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
 
 const invitesRef = ref()
+
+onMounted(() => {
+  document.documentElement.style.overflow = 'hidden'
+  document.body.style.overflow = 'hidden'
+})
+
+onUnmounted(() => {
+  document.documentElement.style.overflow = ''
+  document.body.style.overflow = ''
+})
 </script>
 
 <style scoped>

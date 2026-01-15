@@ -473,6 +473,12 @@ nav {
   flex-direction: column;
   gap: 2rem;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-right::-webkit-scrollbar {
+  display: none;
 }
 
 .spacer {

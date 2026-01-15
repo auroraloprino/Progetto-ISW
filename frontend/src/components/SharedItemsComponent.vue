@@ -124,6 +124,19 @@
         </div>
       </div>
     </div>
+    
+    <div v-show="showConfirmModal" class="modal">
+      <div class="modal-content confirm-modal">
+        <div class="modal-inner">
+          <h3>{{ confirmModal.title }}</h3>
+          <p>{{ confirmModal.message }}</p>
+          <div class="modal-buttons">
+            <button @click="confirmAction" class="confirm-btn">Sì</button>
+            <button @click="closeConfirmModal" class="cancel-btn">No</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -179,32 +192,50 @@ const loadSharedItems = async () => {
   }
 }
 
+const showConfirmModal = ref(false)
+const confirmModal = ref({
+  title: '',
+  message: '',
+  callback: null as (() => void) | null
+})
+
+const showConfirm = (title: string, message: string, callback: () => void) => {
+  confirmModal.value = { title, message, callback }
+  showConfirmModal.value = true
+}
+
+const confirmAction = () => {
+  if (confirmModal.value.callback) {
+    confirmModal.value.callback()
+  }
+  closeConfirmModal()
+}
+
+const closeConfirmModal = () => {
+  showConfirmModal.value = false
+  confirmModal.value.callback = null
+}
+
 const removeBoardMember = async (boardId: string, userId: string) => {
-  if (!confirm('Vuoi rimuovere l\'accesso a questa bacheca per questo utente?')) {
-    return
-  }
-  
-  try {
-    await api.delete(`/boards/${boardId}/members/${userId}`)
-    await loadSharedItems()
-  } catch (error) {
-    console.error('Error removing board member:', error)
-    alert('Errore durante la rimozione')
-  }
+  showConfirm('Rimuovi accesso', 'Vuoi rimuovere l\'accesso a questa bacheca per questo utente?', async () => {
+    try {
+      await api.delete(`/boards/${boardId}/members/${userId}`)
+      await loadSharedItems()
+    } catch (error) {
+      console.error('Error removing board member:', error)
+    }
+  })
 }
 
 const removeTagMember = async (tagId: string, userId: string) => {
-  if (!confirm('Vuoi rimuovere l\'accesso a questo tag per questo utente?')) {
-    return
-  }
-  
-  try {
-    await api.delete(`/calendar/tags/${tagId}/share/${userId}`)
-    await loadSharedItems()
-  } catch (error) {
-    console.error('Error removing tag member:', error)
-    alert('Errore durante la rimozione')
-  }
+  showConfirm('Rimuovi accesso', 'Vuoi rimuovere l\'accesso a questo tag per questo utente?', async () => {
+    try {
+      await api.delete(`/calendar/tags/${tagId}/share/${userId}`)
+      await loadSharedItems()
+    } catch (error) {
+      console.error('Error removing tag member:', error)
+    }
+  })
 }
 
 onMounted(() => {
