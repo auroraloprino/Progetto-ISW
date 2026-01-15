@@ -388,7 +388,7 @@ const currentView = ref('month')
 const selectedDay = ref(currentDate.getDate())
 const userId = ref<string | null>(null)
 
-const { notifications } = useNotifications()
+const { notifications, forceRefreshNotifications } = useNotifications()
 const {
   tags,
   events,
@@ -885,6 +885,7 @@ const deleteEvent = () => {
     if (editingEventId.value) {
       try {
         await deleteEventAPI(editingEventId.value)
+        await forceRefreshNotifications()
         closeEventModal()
       } catch (error) {
         console.error('Error deleting event:', error)
@@ -959,6 +960,7 @@ const deleteEventFromSidebar = (eventId: string) => {
   showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
     try {
       await deleteEventAPI(eventId)
+      await forceRefreshNotifications()
     } catch (error) {
       console.error('Error deleting event:', error)
     }

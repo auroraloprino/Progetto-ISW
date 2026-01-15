@@ -13,7 +13,6 @@ export interface Notification {
   createdAt: Date;
 }
 
-const NOTIFICATIONS_KEY = 'chronio_notifications';
 const CHECK_INTERVAL = 60000;
 
 const globalNotifications = ref<Notification[]>([]);
@@ -29,29 +28,37 @@ export function useNotifications() {
   const tags = ref<Tag[]>([]);
   let checkInterval: ReturnType<typeof setInterval> | null = null;
 
-  const loadNotifications = () => {
+  const loadNotifications = async () => {
     try {
-      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        globalNotifications.value = parsed.map((n: any) => ({
-          ...n,
-          createdAt: new Date(n.createdAt)
-        }));
-        updateGlobalUnreadCount();
+      const response = await api.get('/notifications');
+      const loadedNotifications = response.data.map((n: any) => ({
+        ...n,
+        createdAt: new Date(n.createdAt)
+      }));
+      
+      await loadEvents();
+      const existingEventIds = new Set(events.value.map(e => e.id));
+      
+      globalNotifications.value = loadedNotifications.filter(n => existingEventIds.has(n.eventId));
+      
+      if (loadedNotifications.length !== globalNotifications.value.length) {
+        await syncNotifications();
       }
+      
+      updateGlobalUnreadCount();
     } catch (error) {
+      console.error('Error loading notifications:', error);
       globalNotifications.value = [];
       updateGlobalUnreadCount();
     }
   };
 
-  const saveNotifications = () => {
+  const syncNotifications = async () => {
     try {
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(globalNotifications.value));
+      await api.post('/notifications/sync', { notifications: globalNotifications.value });
       updateGlobalUnreadCount();
     } catch (error) {
-      console.error('Error saving notifications:', error);
+      console.error('Error syncing notifications:', error);
     }
   };
 
@@ -78,6 +85,7 @@ export function useNotifications() {
     
     const now = new Date();
     const newNotifications: Notification[] = [];
+    const existingEventIds = new Set(events.value.map(e => e.id));
 
     events.value.forEach(event => {
       const eventDate = new Date(event.datetime);
@@ -148,37 +156,57 @@ export function useNotifications() {
 
     globalNotifications.value = newNotifications.filter(n => {
       const eventDate = new Date(n.datetime);
-      return eventDate > now;
+      return eventDate > now && existingEventIds.has(n.eventId);
     });
     
-    saveNotifications();
+    await syncNotifications();
   };
 
-  const markAsRead = (notificationId: string) => {
+  const markAsRead = async (notificationId: string) => {
     const notification = globalNotifications.value.find(n => n.id === notificationId);
     if (notification) {
       notification.read = true;
-      saveNotifications();
+      try {
+        await api.put(`/notifications/${notificationId}/read`);
+        updateGlobalUnreadCount();
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
     }
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     globalNotifications.value.forEach(n => n.read = true);
-    saveNotifications();
+    try {
+      await api.put('/notifications/mark-all-read');
+      updateGlobalUnreadCount();
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
   };
 
-  const deleteNotification = (notificationId: string) => {
+  const deleteNotification = async (notificationId: string) => {
     globalNotifications.value = globalNotifications.value.filter(n => n.id !== notificationId);
-    saveNotifications();
+    try {
+      await api.delete(`/notifications/${notificationId}`);
+      updateGlobalUnreadCount();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     globalNotifications.value = [];
-    saveNotifications();
+    try {
+      await api.delete('/notifications');
+      updateGlobalUnreadCount();
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
   };
 
-  const forceRefreshNotifications = () => {
-    checkUpcomingEvents();
+  const forceRefreshNotifications = async () => {
+    await checkUpcomingEvents();
   };
 
   const unreadCount = computed(() => globalUnreadCount.value);

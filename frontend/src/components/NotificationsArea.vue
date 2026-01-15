@@ -77,6 +77,7 @@ const formatDateTime = (datetime: string): string => {
             {{ notification.message }}
           </div>
           <button 
+            v-if="!notification.read"
             class="mark-read-btn"
             @click.stop="markAsRead(notification.id)"
           >

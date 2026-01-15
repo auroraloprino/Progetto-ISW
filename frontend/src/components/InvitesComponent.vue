@@ -62,7 +62,9 @@ const acceptInvite = async (inviteId: string) => {
   try {
     await api.post(`/invites/${inviteId}/accept`)
     await loadInvites()
-    await refreshInvitesCount()  
+    await refreshInvitesCount()
+    alert('Invito accettato! Ricarica la pagina per vedere i nuovi contenuti condivisi.')
+    window.location.reload()
   } catch (error) {
     console.error('Error accepting invite:', error)
   }

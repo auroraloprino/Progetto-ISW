@@ -16,20 +16,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
 
 const invitesRef = ref()
-
-onMounted(() => {
-  document.documentElement.style.overflow = 'hidden'
-  document.body.style.overflow = 'hidden'
-})
-
-onUnmounted(() => {
-  document.documentElement.style.overflow = ''
-  document.body.style.overflow = ''
-})
 </script>
 
 <style scoped>
@@ -39,6 +29,8 @@ onUnmounted(() => {
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
+  height: calc(100vh - 100px);
+  overflow: hidden;
 }
 
 h1 {

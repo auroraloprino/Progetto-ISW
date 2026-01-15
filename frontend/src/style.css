@@ -60,10 +60,11 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg-color);
   min-height: 100vh;
+  overflow: hidden;
 }
 
 body.dashboard-page {
-  overflow: auto; 
+  overflow: hidden; 
 }
 
 body.dashboard-page .account-wrapper {
