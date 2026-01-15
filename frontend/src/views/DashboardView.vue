@@ -6,7 +6,7 @@
       <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
       <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
       <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account
-        <span v-if="unreadCount > 0" class="account-badge">{{ unreadCount }}</span>
+        <span v-if="totalBadge > 0" class="account-badge"> {{ totalBadge > 9 ? '9+' : totalBadge }}</span>
       </RouterLink>
     </div>
   </nav>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import SharedItemsComponent from '../components/SharedItemsComponent.vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
@@ -114,6 +114,7 @@ import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
 import { useNotifications } from '../composables/useNotifications'
+import { useInvitesBadge } from "../composables/useInvitesBadge";
 
 
 const router = useRouter()
@@ -130,6 +131,9 @@ const showEdit = ref(false)
 const showPassword = ref(false)
 const user = ref<User | null>(null)
 const settingsOpen = ref(false)
+
+const { invitesCount } = useInvitesBadge();
+const totalBadge = computed(() => unreadCount.value + invitesCount.value);
 
 function toggleSettings() {
   settingsOpen.value = !settingsOpen.value

@@ -27,6 +27,15 @@ invitesRouter.get("/", async (req: AuthRequest, res) => {
   );
 });
 
+invitesRouter.get("/count", async (req: AuthRequest, res) => {
+  const uid = new ObjectId(req.userId);
+  const invites = dbService.getDb().collection("invites");
+
+  const count = await invites.countDocuments({ recipientId: uid, status: "pending" });
+
+  res.json({ count });
+});
+
 invitesRouter.post("/", async (req: AuthRequest, res) => {
   const { type, itemId, identifier, role } = req.body ?? {};
   if (!type || !itemId || !identifier) return res.status(400).json({ error: "Missing fields" });
