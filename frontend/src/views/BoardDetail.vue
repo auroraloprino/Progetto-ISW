@@ -130,7 +130,6 @@ const router = useRouter();
 
 const {
   boards,
-  boardsList,
   loadBoards,
   getBoardBySlug,
   updateBoardTitle,
@@ -144,7 +143,6 @@ const {
   toggleTaskComplete
 } = useBoards();
 
-const dropdownOpen = ref(false);
 const editingTitle = ref(false);
 const editingColumn = ref<string | null>(null);
 const editingTask = ref<string | null>(null);
@@ -153,7 +151,6 @@ const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
 const showShareModal = ref(false);
-let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const boardSlug = computed(() => {
   const slug = route.params.slug;
@@ -193,36 +190,6 @@ watch(board, (newBoard) => {
     boardTitle.value = newBoard.title;
   }
 }, { immediate: true });
-
-// Dropdown handlers
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const startCloseTimer = () => {
-  closeTimer = setTimeout(() => {
-    dropdownOpen.value = false;
-  }, 300);
-};
-
-const cancelCloseTimer = () => {
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const closeDropdown = () => {
-  dropdownOpen.value = false;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
 
 // Board title editing
 const startEditTitle = () => {
