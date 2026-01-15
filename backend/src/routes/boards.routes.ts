@@ -126,7 +126,7 @@ boardsRouter.post("/:id/members", async (req: AuthRequest, res) => {
 
   const users = dbService.getDb().collection("users");
   const user = await users.findOne({ $or: [{ email: identifier }, { username: identifier }] });
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
   const boards = dbService.getDb().collection("boards");
   await boards.updateOne(

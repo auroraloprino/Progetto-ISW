@@ -40,10 +40,10 @@ invitesRouter.post("/", async (req: AuthRequest, res) => {
     $or: [{ email: identifier }, { username: identifier }],
   });
 
-  if (!recipient) return res.status(404).json({ error: "User not found" });
+  if (!recipient) return res.status(404).json({ error: "Utente non trovato" });
 
   const sender = await users.findOne({ _id: new ObjectId(req.userId) });
-  if (!sender) return res.status(404).json({ error: "Sender not found" });
+  if (!sender) return res.status(404).json({ error: "Utente non trovato" });
 
   let itemName = "";
   if (type === "tag") {

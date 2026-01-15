@@ -158,7 +158,7 @@ calendarRouter.post("/tags/:id/share", async (req: AuthRequest, res) => {
     $or: [{ email: identifier }, { username: identifier }],
   });
 
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
   await tags.updateOne(
     { _id: new ObjectId(tagId) },

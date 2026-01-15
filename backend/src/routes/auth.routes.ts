@@ -63,7 +63,7 @@ authRouter.get("/me", requireAuth, async (req: AuthRequest, res) => {
     { projection: { passwordHash: 0 } }
   );
 
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
   res.json({
     id: user._id.toString(),
@@ -108,7 +108,7 @@ authRouter.put("/me", requireAuth, async (req: AuthRequest, res) => {
     { projection: { passwordHash: 0 } }
   );
 
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
   res.json({
     id: user._id.toString(),
@@ -127,7 +127,7 @@ authRouter.put("/password", requireAuth, async (req: AuthRequest, res) => {
 
   const users = dbService.getDb().collection("users");
   const user = await users.findOne({ _id: new ObjectId(req.userId) });
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (!user) return res.status(404).json({ error: "Utente non trovato" });
 
   const ok = await bcrypt.compare(oldPassword, user.passwordHash);
   if (!ok) return res.status(401).json({ error: "Wrong current password" });
@@ -296,7 +296,7 @@ authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
 
   const result = await users.deleteOne({ _id: uid });
   if (result.deletedCount === 0) {
-    return res.status(404).json({ error: "User not found" });
+    return res.status(404).json({ error: "Utente non trovato" });
   }
 
   res.json({ ok: true });
