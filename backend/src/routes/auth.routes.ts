@@ -207,15 +207,21 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
           email: userMap.get(m.userId.toString())?.email || ""
         }));
       
-      // Se NON sei il proprietario, aggiungi il proprietario alla lista "membri"
+      // Se NON sei il proprietario, verifica se il proprietario è già nei membri
+      // Se non c'è, aggiungilo
       if (!isOwner) {
-        const ownerInfo = userMap.get(b.ownerId.toString());
-        members.unshift({
-          userId: b.ownerId.toString(),
-          role: "owner",
-          username: ownerInfo?.username || "Unknown",
-          email: ownerInfo?.email || ""
-        });
+        const ownerIdStr = b.ownerId.toString();
+        const ownerAlreadyInMembers = members.some((m: any) => m.userId === ownerIdStr);
+        
+        if (!ownerAlreadyInMembers) {
+          const ownerInfo = userMap.get(ownerIdStr);
+          members.unshift({
+            userId: ownerIdStr,
+            role: "owner",
+            username: ownerInfo?.username || "Unknown",
+            email: ownerInfo?.email || ""
+          });
+        }
       }
       
       // Se sei proprietario, mostra solo se condivisa con altri
@@ -254,15 +260,21 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
         })
         .filter((m: any) => m !== null);
       
-      // Se NON sei il proprietario, aggiungi il proprietario alla lista "sharedWith"
+      // Se NON sei il proprietario, verifica se il proprietario è già nella lista
+      // Se non c'è, aggiungilo
       if (!isOwner) {
-        const ownerInfo = userMap.get(t.ownerId.toString());
-        sharedWith.unshift({
-          userId: t.ownerId.toString(),
-          role: "owner",
-          username: ownerInfo?.username || "Unknown",
-          email: ownerInfo?.email || ""
-        });
+        const ownerIdStr = t.ownerId.toString();
+        const ownerAlreadyInList = sharedWith.some((m: any) => m.userId === ownerIdStr);
+        
+        if (!ownerAlreadyInList) {
+          const ownerInfo = userMap.get(ownerIdStr);
+          sharedWith.unshift({
+            userId: ownerIdStr,
+            role: "owner",
+            username: ownerInfo?.username || "Unknown",
+            email: ownerInfo?.email || ""
+          });
+        }
       }
       
       // Se sei proprietario, mostra solo se condiviso con altri
