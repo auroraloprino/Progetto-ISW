@@ -45,7 +45,7 @@
           </div>
 
           <button @click="handleToggleTheme" class="theme-toggle-btn">
-            {{ currentThemeMode === 'dark' ? '☼' : '☾' }}
+            {{ currentThemeMode === 'dark' ? '☀️' : '🌙' }}
           </button>
         </div>
 
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import SharedItemsComponent from '../components/SharedItemsComponent.vue'
 import NotificationsArea from '../components/NotificationsArea.vue'
 import InvitesComponent from '../components/InvitesComponent.vue'
@@ -114,14 +114,13 @@ import { uploadProfileImage } from '../services/cloudinary'
 import { useRouter } from 'vue-router'
 import { toggleTheme, getCurrentTheme } from '../services/theme'
 import { useNotifications } from '../composables/useNotifications'
-import { onBeforeUnmount } from 'vue'
 
 
 const router = useRouter()
 const currentThemeMode = ref(getCurrentTheme())
 const isUploading = ref(false)
 const fileInput = ref<HTMLInputElement>()
-const { notifications, unreadCount } = useNotifications()
+const { unreadCount } = useNotifications()
 
 const newUsername = ref("")
 const newEmail = ref("")
