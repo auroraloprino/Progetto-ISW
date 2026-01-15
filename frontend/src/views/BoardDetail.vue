@@ -1,16 +1,19 @@
 <template>
 
   <div class="page-content" v-if="board">
-    <h1 v-if="!editingTitle" @dblclick="startEditTitle" class="page-title">{{ board.title }}</h1>
-    <input 
-      v-if="editingTitle"
-      v-model="boardTitle"
-      @blur="saveBoardTitle"
-      @keyup.enter="saveBoardTitle"
-      class="page-title-input"
-      ref="titleInputRef"
-      @click.stop
-    />
+    <transition name="title-fade" mode="out-in">
+      <h1 v-if="!editingTitle" :key="'title'" @dblclick="startEditTitle" class="page-title">{{ board.title }}</h1>
+      <input 
+        v-else
+        :key="'input'"
+        v-model="boardTitle"
+        @keyup.enter="saveBoardTitle"
+        @keyup.esc="cancelEditTitle"
+        class="page-title-input"
+        ref="titleInputRef"
+        @click.stop
+      />
+    </transition>
     
     <div class="board-header">
       <button class="btn-back-to-boards" @click="goBackToBacheche">
@@ -126,6 +129,7 @@ const route = useRoute();
 const router = useRouter();
 
 const {
+  boards,
   boardsList,
   loadBoards,
   getBoardBySlug,
@@ -156,9 +160,31 @@ const boardSlug = computed(() => {
   return typeof slug === 'string' ? slug : null;
 });
 
+// Usa un ref per tenere l'ID della board una volta caricata
+const boardId = ref<string | null>(null);
+
 const board = computed(() => {
   if (boardSlug.value === null) return null;
-  return getBoardBySlug(boardSlug.value);
+  
+  // Prima prova a trovare per slug
+  const foundBoard = getBoardBySlug(boardSlug.value);
+  
+  // Se trovata, salva l'ID
+  if (foundBoard) {
+    boardId.value = foundBoard.id;
+    return foundBoard;
+  }
+  
+  // Se non trovata per slug ma abbiamo un ID, cerca per ID
+  // (utile durante il cambio slug quando la route non è ancora aggiornata)
+  if (boardId.value) {
+    const boardById = boards.value.find(b => b.id === boardId.value);
+    if (boardById) {
+      return boardById;
+    }
+  }
+  
+  return null;
 });
 
 // Watch for board changes to update title
@@ -208,20 +234,48 @@ const startEditTitle = () => {
   });
 };
 
-const saveBoardTitle = async () => {
-  if (board.value) {
-    const oldSlug = board.value.slug;
-    const { newSlug } = await updateBoardTitle(board.value.id, boardTitle.value);
-    if (newSlug && newSlug !== oldSlug) {
-      router.replace(`/bacheche/${newSlug}`);
-    }
-  }
+const cancelEditTitle = () => {
   editingTitle.value = false;
+  boardTitle.value = board.value?.title || '';
+};
+
+const saveBoardTitle = async () => {
+  if (board.value && boardTitle.value.trim()) {
+    const oldSlug = board.value.slug;
+    
+    // Aggiorna immediatamente il titolo nel board locale per feedback visivo
+    board.value.title = boardTitle.value;
+    
+    // Chiudi editing mode
+    editingTitle.value = false;
+    
+    // Aggiorna sul backend
+    const { newSlug } = await updateBoardTitle(board.value.id, boardTitle.value);
+    
+    // Aggiorna l'URL solo se lo slug è cambiato
+    if (newSlug && newSlug !== oldSlug) {
+      // Aggiorna l'URL senza ricaricare il componente
+      await router.replace(`/bacheche/${newSlug}`);
+    }
+  } else {
+    // Se il titolo è vuoto, annulla la modifica
+    editingTitle.value = false;
+  }
 };
 
 // Navigation
 const goBackToBacheche = () => {
   router.push('/bacheche');
+};
+
+// Click outside handler for title editing
+const handleClickOutside = (event: MouseEvent) => {
+  if (editingTitle.value) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.page-title-input')) {
+      saveBoardTitle();
+    }
+  }
 };
 
 // Column operations
@@ -342,12 +396,21 @@ onMounted(async () => {
     router.push('/bacheche');
   }
   
+  // Add click outside listener for title editing
+  document.addEventListener('click', handleClickOutside);
+  
   refreshInterval = setInterval(() => {
-    loadBoards();
+    // Non ricaricare se si sta editando il titolo, una colonna o un task
+    if (!editingTitle.value && !editingColumn.value && !editingTask.value) {
+      loadBoards();
+    }
   }, 5000);
 });
 
 onUnmounted(() => {
+  // Remove click outside listener
+  document.removeEventListener('click', handleClickOutside);
+  
   if (refreshInterval) {
     clearInterval(refreshInterval);
   }
@@ -444,6 +507,7 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--primary-color);
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .page-title:hover {
@@ -462,6 +526,25 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 1rem;
   min-width: 300px;
+  max-width: 90%;
+  width: auto;
+  transition: all 0.3s ease;
+}
+
+/* Transition for title change */
+.title-fade-enter-active,
+.title-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.title-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.title-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
 
 .board-header {
