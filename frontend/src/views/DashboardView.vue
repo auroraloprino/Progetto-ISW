@@ -1,16 +1,5 @@
 <template>
-  <nav>
-    <div class="logo">CHRONIO</div>
-    <div class="nav-links">
-      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-      <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
-      <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account" class="active"><i class="fas fa-user-circle"></i> Account
-        <span v-if="totalBadge > 0" class="account-badge"> {{ totalBadge > 9 ? '9+' : totalBadge }}</span>
-      </RouterLink>
-    </div>
-  </nav>
-
+  
  <div class="account-wrapper">
   <div class="account-grid">
     <section class="panel">

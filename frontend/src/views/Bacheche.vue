@@ -1,41 +1,4 @@
 <template>
-  <nav>
-    <div class="logo">CHRONIO</div>
-    <div class="nav-links">
-      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-      
-      <!-- Dropdown Bacheche -->
-      <div class="dropdown" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
-        <a class="dropdown-toggle active" @click.stop="toggleDropdown">
-          <i class="fas fa-clipboard"></i> Bacheche
-          <i class="fas fa-chevron-down" :class="{ 'rotated': dropdownOpen }"></i>
-        </a>
-        <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
-          <RouterLink 
-            v-for="board in boardsList" 
-            :key="board.slug"
-            :to="`/bacheche/${board.slug}`"
-            class="dropdown-item"
-            @click="closeDropdown"
-          >
-            <i class="fas fa-clipboard"></i>
-            {{ board.title }}
-          </RouterLink>
-          <div class="dropdown-divider" v-if="boardsList.length > 0"></div>
-          <a class="dropdown-item disabled">
-            <i class="fas fa-th"></i>
-            Tutte le bacheche
-          </a>
-        </div>
-      </div>
-      
-      <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account
-        <span v-if="todayEventsCount > 0" class="account-badge">{{ todayEventsCount }}</span>
-      </RouterLink>
-      
-    </div>
-  </nav>
 
   <div class="page-content">
     <div class="page-header">

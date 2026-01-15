@@ -1,18 +1,31 @@
 <template>
-  <router-view />
+  <NavBar v-if="showNav" />
+  <RouterView />
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
-import { useNotifications } from './composables/useNotifications'
+import NavBar from "./components/NavBar.vue";
+import { onMounted, onUnmounted, computed } from "vue";
+import { useRoute } from "vue-router";
+import { getToken } from "./auth/auth";
+import { useNotifications } from "./composables/useNotifications";
 
-const { initialize, cleanup } = useNotifications()
+const route = useRoute();
+
+const showNav = computed(() => {
+  const publicRoutes = ["/login", "/register"];
+  const isPublic = publicRoutes.includes(route.path);
+  const loggedIn = !!getToken();
+  return loggedIn && !isPublic;
+});
+
+const { initialize, cleanup } = useNotifications();
 
 onMounted(() => {
-  initialize()
-})
+  initialize();
+});
 
 onUnmounted(() => {
-  cleanup()
-})
+  cleanup();
+});
 </script>
