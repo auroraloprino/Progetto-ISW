@@ -251,22 +251,50 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
 
 authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
   const db = dbService.getDb();
-  const userId = new ObjectId(req.userId);
-
-  const boards = db.collection("boards");
-  await boards.deleteMany({ ownerId: userId });
-
-  await boards.updateMany(
-    { "members.userId": userId },
-    { $pull: { members: { userId } } } as any
-  );
-
-  const transactions = db.collection("transactions");
-  await transactions.deleteMany({ userId });
+  const uid = new ObjectId(req.userId);
 
   const users = db.collection("users");
-  const result = await users.deleteOne({ _id: userId });
+  const boards = db.collection("boards");
+  const tags = db.collection("tags");
+  const events = db.collection("events");
+  const invites = db.collection("invites");
+  const transactions = db.collection("transactions");
 
+  await boards.deleteMany({ ownerId: uid });
+
+  await boards.updateMany(
+    { "members.userId": uid },
+    { $pull: { members: { userId: uid } } }
+  );
+
+  const ownedTags = await tags
+    .find({ ownerId: uid }, { projection: { _id: 1 } })
+    .toArray();
+  const ownedTagIds = ownedTags.map(t => t._id as ObjectId);
+
+  await tags.deleteMany({ ownerId: uid });
+
+  await tags.updateMany(
+    { sharedWith: uid as any },
+    { $pull: { sharedWith: uid as any } }
+  );
+
+  await tags.updateMany(
+    { "sharedWith.userId": uid },
+    { $pull: { sharedWith: { userId: uid } as any } }
+  );
+
+  await events.deleteMany({ userId: uid });
+
+  if (ownedTagIds.length > 0) {
+    await events.deleteMany({ tag: { $in: ownedTagIds } });
+  }
+
+  await invites.deleteMany({ $or: [{ senderId: uid }, { recipientId: uid }] });
+
+  await transactions.deleteMany({ userId: uid });
+
+  const result = await users.deleteOne({ _id: uid });
   if (result.deletedCount === 0) {
     return res.status(404).json({ error: "User not found" });
   }
