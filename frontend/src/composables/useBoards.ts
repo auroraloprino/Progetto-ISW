@@ -1,4 +1,3 @@
-// frontend/src/composables/useBoards.ts
 import { ref, computed } from "vue";
 import type { Board, Column, Task, BoardsState } from "../types/boards";
 import { api } from "../services/api";
@@ -41,9 +40,54 @@ export function useBoards() {
 
   const getBoardBySlug = (slug: string): Board | undefined => state.value.boards.find((b) => b.slug === slug);
 
-  const createBoard = async (title: string = "Nuova Bacheca"): Promise<Board> => {
-    const slug = generateSlug(title, getExistingSlugs());
-    const r = await api.post("/boards", { title, slug });
+  const getNextBoardName = (): string => {
+    // Trova tutte le bacheche che iniziano con "Nuova Bacheca"
+    const existingNames = state.value.boards
+      .map(b => b.title)
+      .filter(title => title.startsWith('Nuova Bacheca'));
+    
+    // Se non ce ne sono, ritorna "Nuova Bacheca"
+    if (existingNames.length === 0) {
+      return 'Nuova Bacheca';
+    }
+    
+    // Estrae i numeri da tutti i nomi
+    const numbers: number[] = [];
+    
+    existingNames.forEach(name => {
+      if (name === 'Nuova Bacheca') {
+        numbers.push(0); // "Nuova Bacheca" senza numero = 0
+      } else {
+        // Estrae il numero dopo "Nuova Bacheca"
+        const match = name.match(/^Nuova Bacheca(\d+)$/);
+        if (match) {
+          numbers.push(parseInt(match[1]));
+        }
+      }
+    });
+    
+    // Se non ci sono numeri validi, ritorna "Nuova Bacheca1"
+    if (numbers.length === 0) {
+      return 'Nuova Bacheca1';
+    }
+    
+    // Trova il numero più alto
+    const maxNumber = Math.max(...numbers);
+    
+    // Se il numero più alto è 0 (solo "Nuova Bacheca" esiste), ritorna "Nuova Bacheca1"
+    if (maxNumber === 0) {
+      return 'Nuova Bacheca1';
+    }
+    
+    // Altrimenti ritorna il prossimo numero
+    return `Nuova Bacheca${maxNumber + 1}`;
+  };
+
+  const createBoard = async (title?: string): Promise<Board> => {
+    // Se non viene passato un titolo, genera un nome sequenziale
+    const boardTitle = title || getNextBoardName();
+    const slug = generateSlug(boardTitle, getExistingSlugs());
+    const r = await api.post("/boards", { title: boardTitle, slug });
     const created = r.data as Board;
     state.value.boards.push(created);
     return created;
