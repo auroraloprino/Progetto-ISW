@@ -142,7 +142,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
   const db = dbService.getDb();
   const userId = new ObjectId(req.userId);
   
-  // Get boards
   const boards = db.collection("boards");
   const userBoards = await boards.find({
     $or: [
@@ -151,7 +150,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     ]
   }).toArray();
   
-  // Get tags
   const tags = db.collection("tags");
   const userTags = await tags.find({
     $or: [
@@ -161,7 +159,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     ]
   }).toArray();
   
-  // Collect all user IDs to fetch
   const userIds = new Set<string>();
   
   userBoards.forEach((board: any) => {
@@ -182,7 +179,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     });
   });
   
-  // Fetch user details
   const users = db.collection("users");
   const userList = await users.find({
     _id: { $in: Array.from(userIds).map(id => new ObjectId(id)) }
@@ -192,12 +188,10 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     userList.map((u: any) => [u._id.toString(), { username: u.username, email: u.email }])
   );
   
-  // Format boards response
   const boardsResponse = userBoards
     .map((b: any) => {
       const isOwner = b.ownerId.equals(userId);
       
-      // Prendi tutti i membri escludendo te stesso
       let members = (b.members ?? [])
         .filter((m: any) => !m.userId.equals(userId))
         .map((m: any) => ({
@@ -207,8 +201,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
           email: userMap.get(m.userId.toString())?.email || ""
         }));
       
-      // Se NON sei il proprietario, verifica se il proprietario è già nei membri
-      // Se non c'è, aggiungilo
       if (!isOwner) {
         const ownerIdStr = b.ownerId.toString();
         const ownerAlreadyInMembers = members.some((m: any) => m.userId === ownerIdStr);
@@ -224,8 +216,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
         }
       }
       
-      // Se sei proprietario, mostra solo se condivisa con altri
-      // Se NON sei proprietario (sei membro), mostrala sempre
       const shouldShow = !isOwner || members.length > 0;
       
       return {
@@ -240,12 +230,10 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
     .filter((b: any) => b.shouldShow)
     .map(({ shouldShow, ...rest }) => rest);
   
-  // Format tags response
   const tagsResponse = userTags
     .map((t: any) => {
       const isOwner = t.ownerId.equals(userId);
       
-      // Prendi tutti i membri escludendo te stesso
       let sharedWith = (t.sharedWith ?? [])
         .map((m: any) => {
           const uid = m.userId ? m.userId : m;
@@ -260,8 +248,6 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
         })
         .filter((m: any) => m !== null);
       
-      // Se NON sei il proprietario, verifica se il proprietario è già nella lista
-      // Se non c'è, aggiungilo
       if (!isOwner) {
         const ownerIdStr = t.ownerId.toString();
         const ownerAlreadyInList = sharedWith.some((m: any) => m.userId === ownerIdStr);
@@ -277,8 +263,7 @@ authRouter.get("/shared-items", requireAuth, async (req: AuthRequest, res) => {
         }
       }
       
-      // Se sei proprietario, mostra solo se condiviso con altri
-      // Se NON sei proprietario (sei membro), mostralo sempre
+  
       const shouldShow = !isOwner || sharedWith.length > 0;
       
       return {
@@ -313,6 +298,64 @@ authRouter.delete("/me", requireAuth, async (req: AuthRequest, res) => {
 
   const transactions = db.collection("transactions");
   await transactions.deleteMany({ userId });
+
+  const notifications = db.collection("notifications");
+
+  await notifications.deleteMany({
+    $or: [
+      { userId }, 
+      { toUserId: userId },
+      { fromUserId: userId },
+      { recipientId: userId },
+      { senderId: userId }
+    ]
+  } as any);
+
+   const tags = db.collection("tags");
+  const events = db.collection("events");
+
+  const ownedTags = await tags.find({ ownerId: userId }, { projection: { _id: 1 } }).toArray();
+  const ownedTagIds = ownedTags.map((t: any) => t._id);
+
+  if (ownedTagIds.length > 0) {
+    await events.updateMany(
+      { tag: { $in: ownedTagIds } },
+      { $set: { tag: null } }
+    );
+  }
+
+  await tags.deleteMany({ ownerId: userId });
+
+ await tags.updateMany(
+    { "sharedWith.userId": userId },
+    { $pull: { sharedWith: { userId } } } as any
+  );
+
+  await tags.updateMany(
+    { sharedWith: userId },
+    { $pull: { sharedWith: userId } } as any
+  );
+
+  await tags.updateMany(
+    { editors: userId },
+    { $pull: { editors: userId } } as any
+  );
+
+  await tags.updateMany(
+    { viewers: userId },
+    { $pull: { viewers: userId } } as any
+  );
+
+  
+  await tags.updateMany(
+    { "editors.userId": userId },
+    { $pull: { editors: { userId } } } as any
+  );
+
+  await tags.updateMany(
+    { "viewers.userId": userId },
+    { $pull: { viewers: { userId } } } as any
+  );
 
   const users = db.collection("users");
   const result = await users.deleteOne({ _id: userId });
