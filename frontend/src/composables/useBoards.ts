@@ -282,6 +282,11 @@ export function useBoards() {
     return true;
   };
 
+  const leaveSharedBoard = async (boardId: string): Promise<void> => {
+    await api.delete(`/boards/${boardId}/leave`);
+    state.value.boards = state.value.boards.filter((b) => b.id !== boardId);
+  };
+
   // non auto-load qui per evitare chiamate duplicate.
   // Le view chiamano loadBoards() in onMounted.
   return {
@@ -300,5 +305,6 @@ export function useBoards() {
     updateTaskTitle,
     moveTask,
     toggleTaskComplete,
+    leaveSharedBoard,
   };
 }

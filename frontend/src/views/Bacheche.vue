@@ -489,4 +489,85 @@ const toggleSearch = () => {
 .nav-links a {
   position: relative;
 }
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .boards-container {
+    justify-content: center;
+  }
+  
+  .board-card {
+    min-width: 250px;
+    flex: 1 1 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .boards-container {
+    gap: 15px;
+    margin-top: 20px;
+  }
+  
+  .board-card {
+    min-width: 100%;
+    flex: 1 1 100%;
+    max-width: 100%;
+    height: 100px;
+  }
+  
+  .board-title {
+    font-size: 16px;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+  
+  .dropdown-menu {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .board-card {
+    height: 90px;
+    padding: 15px;
+  }
+  
+  .board-title {
+    font-size: 14px;
+  }
+  
+  .add-board {
+    gap: 5px;
+  }
+  
+  .add-board i {
+    font-size: 20px;
+  }
+  
+  .add-board span {
+    font-size: 14px;
+  }
+  
+  .delete-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .search-input {
+    font-size: 14px;
+  }
+}
 </style>

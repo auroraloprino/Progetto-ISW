@@ -19,9 +19,14 @@
       <button class="btn-back-to-boards" @click="goBackToBacheche">
         <i class="fas fa-arrow-left"></i> Torna alle Bacheche
       </button>
-      <button class="btn-share-board" @click="openShareModal">
-        <i class="fas fa-share-alt"></i> Condividi
-      </button>
+      <div class="board-actions">
+        <button v-if="!isOwner" class="btn-leave-board" @click="handleLeaveBoard">
+          <i class="fas fa-sign-out-alt"></i> Esci dalla Bacheca
+        </button>
+        <button v-if="isOwner" class="btn-share-board" @click="openShareModal">
+          <i class="fas fa-share-alt"></i> Condividi
+        </button>
+      </div>
     </div>
 
     <div class="columns-container">
@@ -123,6 +128,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
+import { currentUser } from '../auth/auth';
 import ShareModal from '../components/ShareModal.vue';
 
 const route = useRoute();
@@ -140,7 +146,8 @@ const {
   deleteTask,
   updateTaskTitle,
   moveTask,
-  toggleTaskComplete
+  toggleTaskComplete,
+  leaveSharedBoard
 } = useBoards();
 
 const editingTitle = ref(false);
@@ -151,6 +158,7 @@ const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
 const showShareModal = ref(false);
+const userId = ref<string | null>(null);
 
 const boardSlug = computed(() => {
   const slug = route.params.slug;
@@ -182,6 +190,12 @@ const board = computed(() => {
   }
   
   return null;
+});
+
+// Check if current user is owner
+const isOwner = computed(() => {
+  if (!board.value || !userId.value) return true; // Default to true to show share button if unsure
+  return board.value.ownerId === userId.value;
 });
 
 // Watch for board changes to update title
@@ -233,6 +247,21 @@ const saveBoardTitle = async () => {
 // Navigation
 const goBackToBacheche = () => {
   router.push('/bacheche');
+};
+
+const handleLeaveBoard = async () => {
+  if (!board.value) return;
+  
+  const confirmed = confirm('Sei sicuro di voler uscire da questa bacheca condivisa? Non potrai più accedervi.');
+  if (!confirmed) return;
+  
+  try {
+    await leaveSharedBoard(board.value.id);
+    router.push('/bacheche');
+  } catch (error) {
+    console.error('Errore nell\'uscire dalla bacheca:', error);
+    alert('Errore nell\'uscire dalla bacheca');
+  }
 };
 
 // Click outside handler for title editing
@@ -358,6 +387,12 @@ const handleShareSuccess = () => {
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
+  // Load current user
+  const user = await currentUser();
+  if (user) {
+    userId.value = user.id;
+  }
+  
   await loadBoards();
   if (!board.value) {
     router.push('/bacheche');
@@ -524,6 +559,11 @@ onUnmounted(() => {
   max-width: 1200px;
 }
 
+.board-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .btn-back-to-boards {
   background: rgba(13, 72, 83, 0.8);
   color: white;
@@ -544,6 +584,28 @@ onUnmounted(() => {
   background: rgba(13, 72, 83, 1);
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
+}
+
+.btn-leave-board {
+  background: rgba(231, 76, 60, 0.8);
+  color: white;
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-leave-board:hover {
+  background: rgba(231, 76, 60, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
 }
 
 .btn-share-board {
