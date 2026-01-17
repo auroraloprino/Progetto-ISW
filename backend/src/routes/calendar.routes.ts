@@ -173,9 +173,24 @@ calendarRouter.post("/tags/:id/leave", async (req: AuthRequest, res) => {
   const uid = new ObjectId(req.userId);
 
   const tags = dbService.getDb().collection("tags");
+  const notifications = dbService.getDb().collection("notifications");
+  const events = dbService.getDb().collection("events");
+  
   const tag = await tags.findOne({ _id: new ObjectId(tagId) });
 
   if (!tag) return res.status(404).json({ error: "Tag not found" });
+
+  // Get events with this tag to clean up notifications
+  const tagEvents = await events.find({ tag: new ObjectId(tagId) }).toArray();
+  const eventIds = tagEvents.map(e => e._id.toString());
+
+  // Remove notifications for events in this tag
+  if (eventIds.length > 0) {
+    await notifications.deleteMany({
+      userId: uid,
+      eventId: { $in: eventIds }
+    });
+  }
 
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
