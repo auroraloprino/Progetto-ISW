@@ -56,6 +56,6 @@ export async function changePassword(oldPassword: string, newPassword: string): 
 
 export async function deleteAccount(): Promise<boolean> {
   await api.delete("/auth/me");
-  logout(); // rimuove token
+  logout();
   return true;
 }

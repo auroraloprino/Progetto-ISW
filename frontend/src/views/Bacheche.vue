@@ -79,7 +79,6 @@ const router = useRouter();
 
 const {
   boards,
-  boardsList,
   loadBoards,
   createBoard,
   deleteBoard,
@@ -102,7 +101,6 @@ const todayEventsCount = computed(() => {
   }).length
 });
 
-const dropdownOpen = ref(false);
 const boardTitles = reactive<Record<string, string>>({});
 const titleInputs = ref<HTMLInputElement[]>([]);
 const searchQuery = ref('');
@@ -110,7 +108,6 @@ const searchResults = ref<any[]>([]);
 const showSearchResults = ref(false);
 const showSearch = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const isOwner = (board: Board) => board.ownerId === userId.value;
 
@@ -137,37 +134,6 @@ onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
 });
 
-// Dropdown handlers
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const startCloseTimer = () => {
-  closeTimer = setTimeout(() => {
-    dropdownOpen.value = false;
-  }, 300);
-};
-
-const cancelCloseTimer = () => {
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const closeDropdown = () => {
-  dropdownOpen.value = false;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-// Board operations
 const handleCreateBoard = async () => {
   const newBoard = await createBoard();
   newBoard.editing = true;
@@ -267,7 +233,6 @@ const toggleSearch = () => {
 </script>
 
 <style scoped>
-/* Dropdown styles */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -349,7 +314,6 @@ const toggleSearch = () => {
   margin: 0.5rem 0;
 }
 
-/* Boards grid */
 .boards-container {
   display: flex;
   flex-wrap: wrap;
@@ -490,7 +454,6 @@ const toggleSearch = () => {
   position: relative;
 }
 
-/* Responsive Design */
 @media (max-width: 1024px) {
   .boards-container {
     justify-content: center;

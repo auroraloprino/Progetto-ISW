@@ -24,7 +24,6 @@ const currentDateRange = ref<DateRange>({
 const startDate = ref<string>('');
 const endDate = ref<string>('');
 
-// Initialize dates
 const initializeDates = () => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -324,14 +323,12 @@ onUnmounted(() => {
   color: #333;
 }
 
-/* Desktop grande */
 @media (min-width: 1600px) {
   .budget-container {
     max-width: 1800px;
   }
 }
 
-/* Desktop medio */
 @media (max-width: 1400px) {
   .budget-container {
     grid-template-columns: repeat(3, 1fr);
@@ -343,7 +340,6 @@ onUnmounted(() => {
   }
 }
 
-/* Desktop piccolo / Tablet landscape */
 @media (max-width: 1200px) {
   .budget-container {
     grid-template-columns: repeat(3, 1fr);
@@ -361,7 +357,6 @@ onUnmounted(() => {
   }
 }
 
-/* Tablet */
 @media (max-width: 1024px) {
   .budget-container {
     grid-template-columns: repeat(2, 1fr);
@@ -373,7 +368,6 @@ onUnmounted(() => {
   }
 }
 
-/* Tablet piccolo */
 @media (max-width: 768px) {
   .budget-container {
     grid-template-columns: 1fr;
@@ -403,7 +397,6 @@ onUnmounted(() => {
   }
 }
 
-/* Mobile */
 @media (max-width: 480px) {
   .budget-container {
     gap: 1rem;

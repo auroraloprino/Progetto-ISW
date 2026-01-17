@@ -165,23 +165,18 @@ const boardSlug = computed(() => {
   return typeof slug === 'string' ? slug : null;
 });
 
-// Usa un ref per tenere l'ID della board una volta caricata
 const boardId = ref<string | null>(null);
 
 const board = computed(() => {
   if (boardSlug.value === null) return null;
   
-  // Prima prova a trovare per slug
   const foundBoard = getBoardBySlug(boardSlug.value);
   
-  // Se trovata, salva l'ID
   if (foundBoard) {
     boardId.value = foundBoard.id;
     return foundBoard;
   }
   
-  // Se non trovata per slug ma abbiamo un ID, cerca per ID
-  // (utile durante il cambio slug quando la route non è ancora aggiornata)
   if (boardId.value) {
     const boardById = boards.value.find(b => b.id === boardId.value);
     if (boardById) {
@@ -192,20 +187,17 @@ const board = computed(() => {
   return null;
 });
 
-// Check if current user is owner
 const isOwner = computed(() => {
-  if (!board.value || !userId.value) return true; // Default to true to show share button if unsure
+  if (!board.value || !userId.value) return true;
   return board.value.ownerId === userId.value;
 });
 
-// Watch for board changes to update title
 watch(board, (newBoard) => {
   if (newBoard) {
     boardTitle.value = newBoard.title;
   }
 }, { immediate: true });
 
-// Board title editing
 const startEditTitle = () => {
   editingTitle.value = true;
   boardTitle.value = board.value?.title || '';
@@ -224,27 +216,20 @@ const saveBoardTitle = async () => {
   if (board.value && boardTitle.value.trim()) {
     const oldSlug = board.value.slug;
     
-    // Aggiorna immediatamente il titolo nel board locale per feedback visivo
     board.value.title = boardTitle.value;
     
-    // Chiudi editing mode
     editingTitle.value = false;
     
-    // Aggiorna sul backend
     const { newSlug } = await updateBoardTitle(board.value.id, boardTitle.value);
     
-    // Aggiorna l'URL solo se lo slug è cambiato
     if (newSlug && newSlug !== oldSlug) {
-      // Aggiorna l'URL senza ricaricare il componente
       await router.replace(`/bacheche/${newSlug}`);
     }
   } else {
-    // Se il titolo è vuoto, annulla la modifica
     editingTitle.value = false;
   }
 };
 
-// Navigation
 const goBackToBacheche = () => {
   router.push('/bacheche');
 };
@@ -264,7 +249,6 @@ const handleLeaveBoard = async () => {
   }
 };
 
-// Click outside handler for title editing
 const handleClickOutside = (event: MouseEvent) => {
   if (editingTitle.value) {
     const target = event.target as HTMLElement;
@@ -274,7 +258,6 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
-// Column operations
 const handleAddColumn = async () => {
   if (board.value) {
     await addColumn(board.value.id);
@@ -299,7 +282,6 @@ const handleDeleteColumn = async (columnId: string) => {
   }
 };
 
-// Task operations
 const handleAddTask = async (columnId: string) => {
   if (board.value) {
     await addTask(board.value.id, columnId);
@@ -330,7 +312,6 @@ const toggleTaskCompleteLocal = async (columnId: string, taskId: string) => {
   }
 };
 
-// Drag and drop handlers
 let draggedTask: { task: any; sourceColumnId: string } | null = null;
 let dragOverIndex = ref<number>(-1);
 
@@ -387,7 +368,6 @@ const handleShareSuccess = () => {
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 onMounted(async () => {
-  // Load current user
   const user = await currentUser();
   if (user) {
     userId.value = user.id;
@@ -398,11 +378,9 @@ onMounted(async () => {
     router.push('/bacheche');
   }
   
-  // Add click outside listener for title editing
   document.addEventListener('click', handleClickOutside);
   
   refreshInterval = setInterval(() => {
-    // Non ricaricare se si sta editando il titolo, una colonna o un task
     if (!editingTitle.value && !editingColumn.value && !editingTask.value) {
       loadBoards();
     }
@@ -410,7 +388,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // Remove click outside listener
   document.removeEventListener('click', handleClickOutside);
   
   if (refreshInterval) {
@@ -420,7 +397,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Dropdown styles */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -490,7 +466,6 @@ onUnmounted(() => {
   margin: 0.5rem 0;
 }
 
-/* Page layout */
 .page-content {
   padding: 0.5rem 2rem !important;
   margin-top: 100px !important;
@@ -533,7 +508,6 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-/* Transition for title change */
 .title-fade-enter-active,
 .title-fade-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -653,7 +627,6 @@ onUnmounted(() => {
   margin-right: 0.5rem;
 }
 
-/* Columns layout */
 .columns-container {
   display: flex;
   flex-wrap: wrap;
@@ -737,7 +710,6 @@ onUnmounted(() => {
   font-size: 10px;
 }
 
-/* Tasks */
 .tasks-container {
   display: flex;
   flex-direction: column;
@@ -766,7 +738,6 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(13, 72, 83, 0.15);
 }
 
-/* Dark mode */
 [data-theme="dark"] .task-card {
   background: rgba(60, 60, 60, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -918,7 +889,6 @@ onUnmounted(() => {
   font-size: 1rem;
 }
 
-/* Back button */
 .btn-back {
   display: inline-block;
   margin-top: 2rem;
@@ -936,7 +906,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .board-header {
     flex-direction: column;

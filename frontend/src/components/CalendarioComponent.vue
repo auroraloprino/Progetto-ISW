@@ -381,8 +381,6 @@ const { notifications, forceRefreshNotifications } = useNotifications()
 const {
   tags,
   events,
-  loading,
-  error,
   createTag,
   updateTag,
   deleteTag: deleteTagAPI,
@@ -767,7 +765,6 @@ const openEventModal = (day: number, month: number, year: number, hour?: number)
   let startHour, startMinutes, endHour, endMinutes
   
   if (hour !== undefined) {
-    // Clicked on specific hour slot
     startHour = hour
     startMinutes = 0
     endHour = hour + 1
@@ -778,7 +775,6 @@ const openEventModal = (day: number, month: number, year: number, hour?: number)
     const selectedDate = new Date(year, month, day)
     
     if (selectedDate.getTime() === today.getTime()) {
-      // Today: use smart time logic
       const currentMinutes = now.getMinutes()
       const currentHour = now.getHours()
       
@@ -799,7 +795,6 @@ const openEventModal = (day: number, month: number, year: number, hour?: number)
         endMinutes = 0
       }
     } else {
-      // Future days: default to 9-10
       startHour = 9
       startMinutes = 0
       endHour = 10

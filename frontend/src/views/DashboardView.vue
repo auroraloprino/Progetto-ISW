@@ -126,7 +126,6 @@ const totalBadge = computed(() => unreadCount.value + invitesCount.value);
 
 function toggleSettings() {
   settingsOpen.value = !settingsOpen.value
-  // se chiudo, chiudo anche le sotto-tendine
   if (!settingsOpen.value) {
     showEdit.value = false
     showPassword.value = false
@@ -139,7 +138,6 @@ function closeSettings() {
   showPassword.value = false
 }
 
-// click fuori per chiudere
 const onDocClick = () => closeSettings()
 
 onMounted(() => {
@@ -412,28 +410,23 @@ async function deleteAccountAndData() {
   margin-right: auto;
 }
 
-/* GRIGLIA 4 COLONNE */
 .account-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 360px;
   gap: 18px;
   align-items: start;
 
-  /* evita “tagli” */
   min-height: calc(100vh - 140px);
 }
 
-/* pannelli */
 .panel {
   min-width: 0;
   min-height: 0;
 
-  /* ogni colonna scrolla internamente se serve */
   max-height: calc(100vh - 140px);
   overflow: auto;
 }
 
-/* account sempre visibile a destra */
 .panel-account {
   position: sticky;
   top: 120px;
@@ -441,18 +434,15 @@ async function deleteAccountAndData() {
   overflow: auto;
 }
 
-/* OVERRIDE componenti che ti restringono la colonna */
 :deep(.notifications-area) {
   max-width: none !important;
   width: 100% !important;
 }
 
-/* l’invites ha margin-top: 2rem: lo togliamo in dashboard */
 :deep(.invites-section) {
   margin-top: 0 !important;
 }
 
-/* responsive */
 @media (max-width: 1200px) {
   .account-grid {
     grid-template-columns: 1fr 1fr;
@@ -477,15 +467,13 @@ async function deleteAccountAndData() {
   margin-bottom: 1rem;
 }
 
-/* stessa “barra” ma ora è flessibile */
 .username-bar {
   flex: 1;
-  margin-bottom: 0; /* prima era 1.5rem */
+  margin-bottom: 0;
 }
 
-/* bottone ingranaggio con stesso sfondo della username-bar */
 .username-gear {
-  background: #6f8f82; /* stesso della username-bar */
+  background: #6f8f82;
   color: white;
   border: none;
   border-radius: 10px;
@@ -504,7 +492,6 @@ async function deleteAccountAndData() {
   transform: translateY(-1px);
 }
 
-/* tendina sotto username */
 .settings-dropdown {
   width: 100%;
   margin-top: 0.5rem;

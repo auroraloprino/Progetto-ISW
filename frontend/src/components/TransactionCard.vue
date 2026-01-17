@@ -29,10 +29,8 @@ const handleAddClick = () => {
 
 const handleFormSubmit = (description: string, amount: number, date: Date) => {
   if (editingTransaction.value) {
-    // Modalità modifica
     emit('update', editingTransaction.value.id, description, amount, date);
   } else {
-    // Modalità aggiunta
     emit('add', props.type, description, amount, date);
   }
   showForm.value = false;

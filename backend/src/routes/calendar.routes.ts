@@ -180,11 +180,9 @@ calendarRouter.post("/tags/:id/leave", async (req: AuthRequest, res) => {
 
   if (!tag) return res.status(404).json({ error: "Tag not found" });
 
-  // Get events with this tag to clean up notifications
   const tagEvents = await events.find({ tag: new ObjectId(tagId) }).toArray();
   const eventIds = tagEvents.map(e => e._id.toString());
 
-  // Remove notifications for events in this tag
   if (eventIds.length > 0) {
     await notifications.deleteMany({
       userId: uid,
@@ -214,13 +212,11 @@ calendarRouter.delete("/tags/:id/share/:userId", async (req: AuthRequest, res) =
 
   const uidToRemove = new ObjectId(userIdToRemove);
   
-  // Rimuovi entrambi i formati: { userId: ObjectId, role: "..." } e ObjectId diretto
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
     { $pull: { sharedWith: { userId: uidToRemove } } as any }
   );
   
-  // Rimuovi anche il formato vecchio (ObjectId diretto)
   await tags.updateOne(
     { _id: new ObjectId(tagId) },
     { $pull: { sharedWith: uidToRemove } as any }

@@ -38,7 +38,7 @@ const handleLogin = async () => {
   }
 
   try {
-    const ok = await login(user.value, pass.value) // <-- await FONDAMENTALE
+    const ok = await login(user.value, pass.value)
     if (!ok) {
       errorMsg.value = "Credenziali non valide"
       return

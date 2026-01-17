@@ -13,7 +13,7 @@ export type Invite = {
 
 export const invitesAPI = {
   async getPending(): Promise<Invite[]> {
-    const r = await api.get("/invites"); // già filtra pending lato backend
+    const r = await api.get("/invites");
     return r.data as Invite[];
   },
 };

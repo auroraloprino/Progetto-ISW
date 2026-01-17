@@ -8,25 +8,20 @@ const {
   forceRefreshNotifications
 } = useNotifications();
 
-// Filter notifications for display (show all, but sort by read status and date)
 const displayNotifications = computed(() => 
   [...notifications.value].sort((a, b) => {
-    // First sort by read status (unread first)
     if (a.read !== b.read) {
       return a.read ? 1 : -1;
     }
     
-    // Then sort chronologically by event datetime
     return new Date(a.datetime).getTime() - new Date(b.datetime).getTime();
   })
 );
 
-// Handle notification click
 const handleNotificationClick = (notificationId: string) => {
   markAsRead(notificationId);
 };
 
-// Format datetime for display
 const formatDateTime = (datetime: string): string => {
   const date = new Date(datetime);
   const today = new Date();
@@ -257,7 +252,6 @@ const formatDateTime = (datetime: string): string => {
   transform: scale(1.05);
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .notifications-area {
     max-width: 100%;

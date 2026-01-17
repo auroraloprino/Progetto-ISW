@@ -7,7 +7,6 @@ import { useInvitesBadge } from "../composables/useInvitesBadge";
 const {
   notifications,
   unreadCount,
-  upcomingNotifications,
   markAsRead,
   markAllAsRead,
   deleteNotification,
@@ -21,7 +20,6 @@ const totalBadgeCount = computed(() => unreadCount.value + invitesCount.value);
 const dropdownOpen = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Dropdown handlers
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
   if (closeTimer) {
@@ -51,23 +49,19 @@ const closeDropdown = () => {
   }
 };
 
-// Handle notification click
 const handleNotificationClick = (notificationId: string) => {
   markAsRead(notificationId);
 };
 
-// Handle mark all as read
 const handleMarkAllRead = () => {
   markAllAsRead();
 };
 
-// Handle delete
 const handleDelete = (notificationId: string, event: Event) => {
   event.stopPropagation();
   deleteNotification(notificationId);
 };
 
-// Format datetime for display
 const formatDateTime = (datetime: string): string => {
   const date = new Date(datetime);
   const today = new Date();
@@ -469,7 +463,6 @@ const formatDateTime = (datetime: string): string => {
   font-size: 0.85rem;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .notification-dropdown {
     width: 320px;

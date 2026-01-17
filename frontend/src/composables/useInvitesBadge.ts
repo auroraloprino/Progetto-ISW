@@ -5,16 +5,6 @@ export function useInvitesBadge() {
   const invitesCount = ref(0);
   let timer: ReturnType<typeof setInterval> | null = null;
 
-  const refreshInvitesCount = async () => {
-    try {
-      const list = await invitesAPI.getPending();
-      invitesCount.value = Array.isArray(list) ? list.length : 0;
-    } catch {
-      // se non loggato o token scaduto, evita spam
-      invitesCount.value = 0;
-    }
-  };
-
   const tagInvitesCount = ref(0);
   const boardInvitesCount = ref(0);
 
@@ -35,7 +25,7 @@ export function useInvitesBadge() {
 
   onMounted(async () => {
     await refreshDetailed();
-    timer = setInterval(refreshDetailed, 20000); // ogni 20s
+    timer = setInterval(refreshDetailed, 20000);
   });
 
   onUnmounted(() => {

@@ -5,7 +5,6 @@
     <div class="nav-links">
       <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
       
-      <!-- Dropdown Bacheche -->
       <div 
         class="dropdown"
         @mouseenter="openDropdown"
@@ -81,7 +80,6 @@ const { unreadCount } = useNotifications();
 const { invitesCount } = useInvitesBadge();
 const { boardsList, loadBoards } = useBoards();
 
-// Dropdown state
 const dropdownOpen = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -114,12 +112,10 @@ const closeDropdown = () => {
   }
 };
 
-// Load boards on mount
 onMounted(() => {
   loadBoards();
 });
 
-// badge totale = notifiche urgenti (o non lette) + inviti pendenti
 const accountBadge = computed(() => (unreadCount.value || 0) + (invitesCount.value || 0));
 </script>
 
@@ -165,7 +161,6 @@ nav {
   line-height: 1;
 }
 
-/* Dropdown styles */
 .dropdown {
   position: relative;
   display: inline-block;

@@ -4,7 +4,6 @@ import type { Transaction, TransactionType } from "../types";
 export const budgetAPI = {
   async getAll(): Promise<Transaction[]> {
     const r = await api.get("/transactions");
-    // date arriva come string/Date -> normalizzi
     return r.data.map((t: any) => ({ ...t, date: new Date(t.date) }));
   },
   async create(input: { type: TransactionType; description: string; amount: number; date: Date }): Promise<Transaction> {

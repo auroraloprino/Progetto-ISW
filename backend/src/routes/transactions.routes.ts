@@ -5,7 +5,6 @@ import type { AuthRequest } from "../middleware/requireAuth";
 
 export const transactionsRouter = Router();
 
-// GET /api/transactions
 transactionsRouter.get("/", async (req: AuthRequest, res) => {
   const tx = dbService.getDb().collection("transactions");
   const userId = new ObjectId(req.userId);
@@ -17,12 +16,11 @@ transactionsRouter.get("/", async (req: AuthRequest, res) => {
       type: t.type,
       description: t.description,
       amount: t.amount,
-      date: t.date, // ISO
+      date: t.date,
     }))
   );
 });
 
-// POST /api/transactions
 transactionsRouter.post("/", async (req: AuthRequest, res) => {
   const { type, description, amount, date } = req.body ?? {};
   if (!type || !description || typeof amount !== "number" || !date) {
@@ -52,7 +50,6 @@ transactionsRouter.post("/", async (req: AuthRequest, res) => {
   });
 });
 
-// PUT /api/transactions/:id
 transactionsRouter.put("/:id", async (req: AuthRequest, res) => {
   const { description, amount, date } = req.body ?? {};
   if (typeof description !== "string" || typeof amount !== "number" || !date) {
@@ -82,7 +79,6 @@ transactionsRouter.put("/:id", async (req: AuthRequest, res) => {
   });
 });
 
-// DELETE /api/transactions/:id
 transactionsRouter.delete("/:id", async (req: AuthRequest, res) => {
   const tx = dbService.getDb().collection("transactions");
   const userId = new ObjectId(req.userId);

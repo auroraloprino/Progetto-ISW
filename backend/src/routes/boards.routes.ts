@@ -157,7 +157,6 @@ boardsRouter.delete("/:id/members/:userId", async (req: AuthRequest, res) => {
   res.json({ ok: true });
 });
 
-// Leave shared board (for non-owners)
 boardsRouter.delete("/:id/leave", async (req: AuthRequest, res) => {
   const boardId = req.params.id;
   const userId = req.userId!;
@@ -167,18 +166,15 @@ boardsRouter.delete("/:id/leave", async (req: AuthRequest, res) => {
 
   if (!board) return res.status(404).json({ error: "Board not found" });
 
-  // Check if user is the owner
   if (board.ownerId.equals(new ObjectId(userId))) {
     return res.status(403).json({ error: "Owner cannot leave their own board. Delete it instead." });
   }
 
-  // Check if user is actually a member
   const isMember = (board.members ?? []).some((m: any) => m.userId?.equals(new ObjectId(userId)));
   if (!isMember) {
     return res.status(403).json({ error: "You are not a member of this board" });
   }
 
-  // Remove user from members
   await boards.updateOne(
     { _id: new ObjectId(boardId) },
     { $pull: { members: { userId: new ObjectId(userId) } } as any }

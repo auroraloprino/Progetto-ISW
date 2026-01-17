@@ -41,24 +41,20 @@ export function useBoards() {
   const getBoardBySlug = (slug: string): Board | undefined => state.value.boards.find((b) => b.slug === slug);
 
   const getNextBoardName = (): string => {
-    // Trova tutte le bacheche che iniziano con "Nuova Bacheca"
     const existingNames = state.value.boards
       .map(b => b.title)
       .filter(title => title.startsWith('Nuova Bacheca'));
     
-    // Se non ce ne sono, ritorna "Nuova Bacheca"
     if (existingNames.length === 0) {
       return 'Nuova Bacheca';
     }
     
-    // Estrae i numeri da tutti i nomi
     const numbers: number[] = [];
     
     existingNames.forEach(name => {
       if (name === 'Nuova Bacheca') {
-        numbers.push(0); // "Nuova Bacheca" senza numero = 0
+        numbers.push(0);
       } else {
-        // Estrae il numero dopo "Nuova Bacheca"
         const match = name.match(/^Nuova Bacheca(\d+)$/);
         if (match) {
           numbers.push(parseInt(match[1]));
@@ -66,25 +62,20 @@ export function useBoards() {
       }
     });
     
-    // Se non ci sono numeri validi, ritorna "Nuova Bacheca1"
     if (numbers.length === 0) {
       return 'Nuova Bacheca1';
     }
     
-    // Trova il numero più alto
     const maxNumber = Math.max(...numbers);
     
-    // Se il numero più alto è 0 (solo "Nuova Bacheca" esiste), ritorna "Nuova Bacheca1"
     if (maxNumber === 0) {
       return 'Nuova Bacheca1';
     }
     
-    // Altrimenti ritorna il prossimo numero
     return `Nuova Bacheca${maxNumber + 1}`;
   };
 
   const createBoard = async (title?: string): Promise<Board> => {
-    // Se non viene passato un titolo, genera un nome sequenziale
     const boardTitle = title || getNextBoardName();
     const slug = generateSlug(boardTitle, getExistingSlugs());
     const r = await api.post("/boards", { title: boardTitle, slug });
@@ -124,7 +115,6 @@ export function useBoards() {
     board.title = trimmedTitle;
     board.slug = newSlug;
 
-    // aggiorna boardSlug su colonne/task
     board.columns.forEach((col) => {
       col.boardSlug = newSlug;
       col.tasks.forEach((t) => (t.boardSlug = newSlug));
@@ -134,7 +124,6 @@ export function useBoards() {
     return { newSlug };
   };
 
-  // Column operations
   const addColumn = async (boardId: string, title: string = "TITOLO"): Promise<Column | null> => {
     const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return null;
@@ -178,7 +167,6 @@ export function useBoards() {
     return true;
   };
 
-  // Task operations
   const addTask = async (boardId: string, columnId: string, title: string = "TASK"): Promise<Task | null> => {
     const board = state.value.boards.find((b) => b.id === boardId);
     if (!board) return null;
@@ -287,8 +275,6 @@ export function useBoards() {
     state.value.boards = state.value.boards.filter((b) => b.id !== boardId);
   };
 
-  // non auto-load qui per evitare chiamate duplicate.
-  // Le view chiamano loadBoards() in onMounted.
   return {
     boards,
     boardsList,
