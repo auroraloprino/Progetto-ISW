@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useNotifications } from '../composables/useNotifications';
+import { computed } from "vue";
+import { useInvitesBadge } from "../composables/useInvitesBadge";
 
 const {
   notifications,
   unreadCount,
-  upcomingNotifications,
   markAsRead,
   markAllAsRead,
   deleteNotification,
   formatTimeUntil
 } = useNotifications();
+const { invitesCount } = useInvitesBadge();
+
+
+const totalBadgeCount = computed(() => unreadCount.value + invitesCount.value);
 
 const dropdownOpen = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Dropdown handlers
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
   if (closeTimer) {
@@ -45,23 +49,19 @@ const closeDropdown = () => {
   }
 };
 
-// Handle notification click
 const handleNotificationClick = (notificationId: string) => {
   markAsRead(notificationId);
 };
 
-// Handle mark all as read
 const handleMarkAllRead = () => {
   markAllAsRead();
 };
 
-// Handle delete
 const handleDelete = (notificationId: string, event: Event) => {
   event.stopPropagation();
   deleteNotification(notificationId);
 };
 
-// Format datetime for display
 const formatDateTime = (datetime: string): string => {
   const date = new Date(datetime);
   const today = new Date();
@@ -94,10 +94,10 @@ const formatDateTime = (datetime: string): string => {
     <button 
       class="bell-button" 
       @click.stop="toggleDropdown"
-      :class="{ 'has-unread': unreadCount > 0 }"
+      :class="{ 'has-unread': totalBadgeCount > 0 }"
     >
       <i class="fas fa-bell"></i>
-      <span v-if="unreadCount > 0" class="badge">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+      <span v-if="totalBadgeCount > 0" class="badge"> {{ totalBadgeCount > 9 ? '9+' : totalBadgeCount }}</span>
     </button>
 
     <div 
@@ -463,7 +463,6 @@ const formatDateTime = (datetime: string): string => {
   font-size: 0.85rem;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .notification-dropdown {
     width: 320px;

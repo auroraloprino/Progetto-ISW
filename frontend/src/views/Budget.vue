@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useBudget } from '../composables/useBudget';
+import { useNotifications } from '../composables/useNotifications';
 import TransactionCard from '../components/TransactionCard.vue';
 import type { TransactionType, DateRange } from '../types';
 
@@ -13,6 +14,8 @@ const {
   calculateBudget
 } = useBudget();
 
+const { notifications } = useNotifications();
+
 const currentDateRange = ref<DateRange>({
   startDate: new Date(),
   endDate: new Date()
@@ -21,7 +24,6 @@ const currentDateRange = ref<DateRange>({
 const startDate = ref<string>('');
 const endDate = ref<string>('');
 
-// Initialize dates
 const initializeDates = () => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -79,6 +81,19 @@ const balanceColor = computed(() => {
   if (budgetSummary.value.balance < 0) return 'var(--accent-expense)';
   return 'var(--accent-balance)';
 });
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+});
 onMounted(() => {
   document.body.classList.add('no-scroll');
   window.scrollTo(0, 0);
@@ -91,16 +106,6 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav>
-    <div class="logo">CHRONIO</div>
-    <div class="nav-links">
-      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-      <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
-      <RouterLink to="/budget" class="active"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
-      
-    </div>
-  </nav>
 
   <div class="page-content">
     <h1>Budget</h1>
@@ -318,14 +323,12 @@ onUnmounted(() => {
   color: #333;
 }
 
-/* Desktop grande */
 @media (min-width: 1600px) {
   .budget-container {
     max-width: 1800px;
   }
 }
 
-/* Desktop medio */
 @media (max-width: 1400px) {
   .budget-container {
     grid-template-columns: repeat(3, 1fr);
@@ -337,7 +340,6 @@ onUnmounted(() => {
   }
 }
 
-/* Desktop piccolo / Tablet landscape */
 @media (max-width: 1200px) {
   .budget-container {
     grid-template-columns: repeat(3, 1fr);
@@ -355,7 +357,6 @@ onUnmounted(() => {
   }
 }
 
-/* Tablet */
 @media (max-width: 1024px) {
   .budget-container {
     grid-template-columns: repeat(2, 1fr);
@@ -367,7 +368,6 @@ onUnmounted(() => {
   }
 }
 
-/* Tablet piccolo */
 @media (max-width: 768px) {
   .budget-container {
     grid-template-columns: 1fr;
@@ -397,7 +397,6 @@ onUnmounted(() => {
   }
 }
 
-/* Mobile */
 @media (max-width: 480px) {
   .budget-container {
     gap: 1rem;
@@ -434,5 +433,24 @@ onUnmounted(() => {
   .balance-value {
     font-size: 1.2rem;
   }
+}
+
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
 }
 </style>

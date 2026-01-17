@@ -202,7 +202,6 @@ const handleEdit = (transaction: Transaction) => {
   }
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .transaction-item {
     flex-wrap: wrap;

@@ -1,56 +1,32 @@
 <template>
-  <nav>
-    <div class="logo">CHRONIO</div>
-    <div class="nav-links">
-      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-      
-      <!-- Dropdown Bacheche -->
-      <div class="dropdown" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
-        <a class="dropdown-toggle active" @click.stop="toggleDropdown">
-          <i class="fas fa-clipboard"></i> Bacheche
-          <i class="fas fa-chevron-down" :class="{ 'rotated': dropdownOpen }"></i>
-        </a>
-        <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
-          <RouterLink 
-            v-for="board in boardsList" 
-            :key="board.slug"
-            :to="`/bacheche/${board.slug}`"
-            class="dropdown-item"
-            @click="closeDropdown"
-          >
-            <i class="fas fa-clipboard"></i>
-            {{ board.title }}
-          </RouterLink>
-          <div class="dropdown-divider"></div>
-          <RouterLink to="/bacheche" class="dropdown-item" @click="closeDropdown">
-            <i class="fas fa-th"></i>
-            Tutte le bacheche
-          </RouterLink>
-        </div>
-      </div>
-      
-      <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
-      
-    </div>
-  </nav>
 
   <div class="page-content" v-if="board">
-    <h1 v-if="!editingTitle" @dblclick="startEditTitle" class="page-title">{{ board.title }}</h1>
-    <input 
-      v-if="editingTitle"
-      v-model="boardTitle"
-      @blur="saveBoardTitle"
-      @keyup.enter="saveBoardTitle"
-      class="page-title-input"
-      ref="titleInputRef"
-      @click.stop
-    />
+    <transition name="title-fade" mode="out-in">
+      <h1 v-if="!editingTitle" :key="'title'" @dblclick="startEditTitle" class="page-title">{{ board.title }}</h1>
+      <input 
+        v-else
+        :key="'input'"
+        v-model="boardTitle"
+        @keyup.enter="saveBoardTitle"
+        @keyup.esc="cancelEditTitle"
+        class="page-title-input"
+        ref="titleInputRef"
+        @click.stop
+      />
+    </transition>
     
     <div class="board-header">
       <button class="btn-back-to-boards" @click="goBackToBacheche">
         <i class="fas fa-arrow-left"></i> Torna alle Bacheche
       </button>
+      <div class="board-actions">
+        <button v-if="!isOwner" class="btn-leave-board" @click="handleLeaveBoard">
+          <i class="fas fa-sign-out-alt"></i> Esci dalla Bacheca
+        </button>
+        <button v-if="isOwner" class="btn-share-board" @click="openShareModal">
+          <i class="fas fa-share-alt"></i> Condividi
+        </button>
+      </div>
     </div>
 
     <div class="columns-container">
@@ -81,20 +57,24 @@
           </button>
         </div>
 
-        <div class="tasks-container"
-             @dragover.prevent
-             @drop="handleDrop($event, column.id)">
+        <button class="btn-add-task" @click="handleAddTask(column.id)">
+          AGGIUNGI TASK
+        </button>
+
+        <div class="tasks-container" @dragover.prevent="handleDragOver" @drop="handleDrop($event, column.id)">
           <div 
-            v-for="task in column.tasks" 
+            v-for="(task, index) in column.tasks" 
             :key="task.id"
             :class="['task-card', { completed: task.completed }]"
             draggable="true"
             @dragstart="handleDragStart($event, task, column.id)"
             @dragend="handleDragEnd"
+            @dragover.prevent="handleTaskDragOver($event, index)"
+            @dblclick.stop="startEditTask(task)"
           >
             <button 
               class="task-checkbox"
-              @click.stop="toggleTaskComplete(column.id, task.id)"
+              @click.stop="toggleTaskCompleteLocal(column.id, task.id)"
               :class="{ checked: task.completed }"
             >
               <i v-if="task.completed" class="fas fa-check"></i>
@@ -108,7 +88,7 @@
               class="task-input"
               @click.stop
             />
-            <span v-else @dblclick.stop="startEditTask(task)" class="task-text">
+            <span v-else class="task-text">
               {{ task.title }}
             </span>
             
@@ -120,10 +100,6 @@
               <i class="fas fa-times"></i>
             </button>
           </div>
-
-          <button class="btn-add-task" @click="handleAddTask(column.id)">
-            AGGIUNGI TASK
-          </button>
         </div>
       </div>
       
@@ -138,18 +114,29 @@
     <h1>Bacheca non trovata</h1>
     <RouterLink to="/bacheche" class="btn-back">Torna alle bacheche</RouterLink>
   </div>
+
+  <ShareModal 
+    :show="showShareModal" 
+    type="board" 
+    :itemId="board?.id || ''"
+    @close="showShareModal = false"
+    @success="handleShareSuccess"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
+import { currentUser } from '../auth/auth';
+import ShareModal from '../components/ShareModal.vue';
 
 const route = useRoute();
 const router = useRouter();
 
 const {
-  boardsList,
+  boards,
+  loadBoards,
   getBoardBySlug,
   updateBoardTitle,
   addColumn,
@@ -158,10 +145,11 @@ const {
   addTask,
   deleteTask,
   updateTaskTitle,
-  moveTask
+  moveTask,
+  toggleTaskComplete,
+  leaveSharedBoard
 } = useBoards();
 
-const dropdownOpen = ref(false);
 const editingTitle = ref(false);
 const editingColumn = ref<string | null>(null);
 const editingTask = ref<string | null>(null);
@@ -169,57 +157,47 @@ const boardTitle = ref('');
 const columnTitles = ref<Record<string, string>>({});
 const taskTitles = ref<Record<string, string>>({});
 const titleInputRef = ref<HTMLInputElement | null>(null);
-let closeTimer: ReturnType<typeof setTimeout> | null = null;
-let draggedTask: { task: any; sourceColumnId: string } | null = null;
+const showShareModal = ref(false);
+const userId = ref<string | null>(null);
 
 const boardSlug = computed(() => {
   const slug = route.params.slug;
   return typeof slug === 'string' ? slug : null;
 });
 
+const boardId = ref<string | null>(null);
+
 const board = computed(() => {
   if (boardSlug.value === null) return null;
-  return getBoardBySlug(boardSlug.value);
+  
+  const foundBoard = getBoardBySlug(boardSlug.value);
+  
+  if (foundBoard) {
+    boardId.value = foundBoard.id;
+    return foundBoard;
+  }
+  
+  if (boardId.value) {
+    const boardById = boards.value.find(b => b.id === boardId.value);
+    if (boardById) {
+      return boardById;
+    }
+  }
+  
+  return null;
 });
 
-// Watch for board changes to update title
+const isOwner = computed(() => {
+  if (!board.value || !userId.value) return true;
+  return board.value.ownerId === userId.value;
+});
+
 watch(board, (newBoard) => {
   if (newBoard) {
     boardTitle.value = newBoard.title;
   }
 }, { immediate: true });
 
-// Dropdown handlers
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const startCloseTimer = () => {
-  closeTimer = setTimeout(() => {
-    dropdownOpen.value = false;
-  }, 300);
-};
-
-const cancelCloseTimer = () => {
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const closeDropdown = () => {
-  dropdownOpen.value = false;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-// Board title editing
 const startEditTitle = () => {
   editingTitle.value = true;
   boardTitle.value = board.value?.title || '';
@@ -229,26 +207,60 @@ const startEditTitle = () => {
   });
 };
 
-const saveBoardTitle = () => {
-  if (boardSlug.value !== null) {
-    const newSlug = updateBoardTitle(boardSlug.value, boardTitle.value);
-    if (newSlug && newSlug !== boardSlug.value) {
-      // Slug changed, redirect to new URL
-      router.replace(`/bacheche/${newSlug}`);
-    }
-  }
+const cancelEditTitle = () => {
   editingTitle.value = false;
+  boardTitle.value = board.value?.title || '';
 };
 
-// Navigation
+const saveBoardTitle = async () => {
+  if (board.value && boardTitle.value.trim()) {
+    const oldSlug = board.value.slug;
+    
+    board.value.title = boardTitle.value;
+    
+    editingTitle.value = false;
+    
+    const { newSlug } = await updateBoardTitle(board.value.id, boardTitle.value);
+    
+    if (newSlug && newSlug !== oldSlug) {
+      await router.replace(`/bacheche/${newSlug}`);
+    }
+  } else {
+    editingTitle.value = false;
+  }
+};
+
 const goBackToBacheche = () => {
   router.push('/bacheche');
 };
 
-// Column operations
-const handleAddColumn = () => {
-  if (boardSlug.value !== null) {
-    addColumn(boardSlug.value);
+const handleLeaveBoard = async () => {
+  if (!board.value) return;
+  
+  const confirmed = confirm('Sei sicuro di voler uscire da questa bacheca condivisa? Non potrai più accedervi.');
+  if (!confirmed) return;
+  
+  try {
+    await leaveSharedBoard(board.value.id);
+    router.push('/bacheche');
+  } catch (error) {
+    console.error('Errore nell\'uscire dalla bacheca:', error);
+    alert('Errore nell\'uscire dalla bacheca');
+  }
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  if (editingTitle.value) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.page-title-input')) {
+      saveBoardTitle();
+    }
+  }
+};
+
+const handleAddColumn = async () => {
+  if (board.value) {
+    await addColumn(board.value.id);
   }
 };
 
@@ -257,23 +269,22 @@ const startEditColumn = (column: any) => {
   columnTitles.value[column.id] = column.title;
 };
 
-const saveColumnTitle = (columnId: string) => {
-  if (boardSlug.value !== null) {
-    updateColumnTitle(boardSlug.value, columnId, columnTitles.value[columnId] || '');
+const saveColumnTitle = async (columnId: string) => {
+  if (board.value) {
+    await updateColumnTitle(board.value.id, columnId, columnTitles.value[columnId] || "");
   }
   editingColumn.value = null;
 };
 
-const handleDeleteColumn = (columnId: string) => {
-  if (boardSlug.value !== null) {
-    deleteColumn(boardSlug.value, columnId);
+const handleDeleteColumn = async (columnId: string) => {
+  if (board.value) {
+    await deleteColumn(board.value.id, columnId);
   }
 };
 
-// Task operations
-const handleAddTask = (columnId: string) => {
-  if (boardSlug.value !== null) {
-    addTask(boardSlug.value, columnId);
+const handleAddTask = async (columnId: string) => {
+  if (board.value) {
+    await addTask(board.value.id, columnId);
   }
 };
 
@@ -282,35 +293,28 @@ const startEditTask = (task: any) => {
   taskTitles.value[task.id] = task.title;
 };
 
-const saveTaskTitle = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    updateTaskTitle(boardSlug.value, columnId, taskId, taskTitles.value[taskId] || '');
+const saveTaskTitle = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await updateTaskTitle(board.value.id, columnId, taskId, taskTitles.value[taskId] || "");
   }
   editingTask.value = null;
 };
 
-const handleDeleteTask = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    deleteTask(boardSlug.value, columnId, taskId);
+const handleDeleteTask = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await deleteTask(board.value.id, columnId, taskId);
   }
 };
 
-const toggleTaskComplete = (columnId: string, taskId: string) => {
-  if (boardSlug.value !== null) {
-    const board = getBoardBySlug(boardSlug.value);
-    if (board) {
-      const column = board.columns.find(c => c.id === columnId);
-      if (column) {
-        const task = column.tasks.find(t => t.id === taskId);
-        if (task) {
-          task.completed = !task.completed;
-        }
-      }
-    }
+const toggleTaskCompleteLocal = async (columnId: string, taskId: string) => {
+  if (board.value) {
+    await toggleTaskComplete(board.value.id, columnId, taskId);
   }
 };
 
-// Drag and drop handlers
+let draggedTask: { task: any; sourceColumnId: string } | null = null;
+let dragOverIndex = ref<number>(-1);
+
 const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
   draggedTask = { task, sourceColumnId: columnId };
   if (event.dataTransfer) {
@@ -320,36 +324,79 @@ const handleDragStart = (event: DragEvent, task: any, columnId: string) => {
 
 const handleDragEnd = () => {
   draggedTask = null;
+  dragOverIndex.value = -1;
 };
 
-const handleDrop = (event: DragEvent, targetColumnId: string) => {
+const handleDragOver = (event: DragEvent) => {
   event.preventDefault();
-  
-  if (!draggedTask || !boardSlug.value) return;
-  
+};
+
+const handleTaskDragOver = (event: DragEvent, index: number) => {
+  event.preventDefault();
+  dragOverIndex.value = index;
+};
+
+const handleDrop = async (event: DragEvent, targetColumnId: string) => {
+  event.preventDefault();
+  if (!draggedTask || !board.value) return;
+
   const { task, sourceColumnId } = draggedTask;
+  const targetColumn = board.value.columns.find((c) => c.id === targetColumnId);
+  if (!targetColumn) return;
+
+  let newOrder = dragOverIndex.value >= 0 ? dragOverIndex.value : targetColumn.tasks.length;
   
-  if (sourceColumnId !== targetColumnId) {
-    // Find target position (append to end)
-    const board = getBoardBySlug(boardSlug.value);
-    const targetColumn = board?.columns.find(c => c.id === targetColumnId);
-    const newOrder = targetColumn?.tasks.length || 0;
-    
-    moveTask(boardSlug.value, task.id, sourceColumnId, targetColumnId, newOrder);
+  if (sourceColumnId === targetColumnId) {
+    const currentIndex = targetColumn.tasks.findIndex(t => t.id === task.id);
+    if (currentIndex < newOrder) newOrder--;
   }
+
+  await moveTask(board.value.id, task.id, sourceColumnId, targetColumnId, newOrder);
   
   draggedTask = null;
+  dragOverIndex.value = -1;
 };
 
-onMounted(() => {
+const openShareModal = () => {
+  showShareModal.value = true;
+};
+
+const handleShareSuccess = () => {
+  console.log('Bacheca condivisa con successo');
+};
+
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
+onMounted(async () => {
+  const user = await currentUser();
+  if (user) {
+    userId.value = user.id;
+  }
+  
+  await loadBoards();
   if (!board.value) {
     router.push('/bacheche');
+  }
+  
+  document.addEventListener('click', handleClickOutside);
+  
+  refreshInterval = setInterval(() => {
+    if (!editingTitle.value && !editingColumn.value && !editingTask.value) {
+      loadBoards();
+    }
+  }, 5000);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+  
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
   }
 });
 </script>
 
 <style scoped>
-/* Dropdown styles */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -419,7 +466,6 @@ onMounted(() => {
   margin: 0.5rem 0;
 }
 
-/* Page layout */
 .page-content {
   padding: 0.5rem 2rem !important;
   margin-top: 100px !important;
@@ -429,7 +475,6 @@ onMounted(() => {
   justify-content: flex-start !important;
   align-items: center !important;
   text-align: center !important;
-  overflow-y: auto !important;
 }
 
 .page-title {
@@ -439,6 +484,7 @@ onMounted(() => {
   font-weight: 700;
   color: var(--primary-color);
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .page-title:hover {
@@ -457,9 +503,26 @@ onMounted(() => {
   text-align: center;
   margin-bottom: 1rem;
   min-width: 300px;
+  max-width: 90%;
+  width: auto;
+  transition: all 0.3s ease;
 }
 
-/* Board header */
+.title-fade-enter-active,
+.title-fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.title-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.title-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
+}
+
 .board-header {
   display: flex;
   justify-content: space-between;
@@ -468,6 +531,11 @@ onMounted(() => {
   gap: 1rem;
   width: 100%;
   max-width: 1200px;
+}
+
+.board-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .btn-back-to-boards {
@@ -490,6 +558,50 @@ onMounted(() => {
   background: rgba(13, 72, 83, 1);
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
+}
+
+.btn-leave-board {
+  background: rgba(231, 76, 60, 0.8);
+  color: white;
+  border: 2px solid #e74c3c;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-leave-board:hover {
+  background: rgba(231, 76, 60, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.btn-share-board {
+  background: rgba(52, 152, 219, 0.8);
+  color: white;
+  border: 2px solid #3498db;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-share-board:hover {
+  background: rgba(52, 152, 219, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
 .btn-add-column {
@@ -515,7 +627,6 @@ onMounted(() => {
   margin-right: 0.5rem;
 }
 
-/* Columns layout */
 .columns-container {
   display: flex;
   flex-wrap: wrap;
@@ -599,34 +710,12 @@ onMounted(() => {
   font-size: 10px;
 }
 
-/* Tasks */
 .tasks-container {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   flex: 1;
-  min-height: 100px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.tasks-container .task-card {
-  order: 1;
-}
-
-.tasks-container .task-card.completed {
-  order: 2;
-}
-
-.tasks-container .btn-add-task {
-  order: 0;
-}
-
-.tasks-container:hover {
-  background: rgba(255, 255, 255, 0.05);
+  min-height: 50px;
 }
 
 .task-card {
@@ -640,11 +729,7 @@ onMounted(() => {
   position: relative;
   border: 1px solid rgba(13, 72, 83, 0.2);
   box-shadow: 0 1px 3px rgba(13, 72, 83, 0.1);
-  cursor: grab;
-}
-
-.task-card:active {
-  cursor: grabbing;
+  cursor: move;
 }
 
 .task-card:hover {
@@ -653,7 +738,6 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(13, 72, 83, 0.15);
 }
 
-/* Dark mode */
 [data-theme="dark"] .task-card {
   background: rgba(60, 60, 60, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -682,6 +766,7 @@ onMounted(() => {
   justify-content: center;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .task-checkbox.checked {
@@ -693,10 +778,11 @@ onMounted(() => {
   flex: 1;
   color: var(--primary-color);
   font-weight: 500;
-  cursor: pointer;
+  cursor: move;
   padding: 0.25rem;
   border-radius: 4px;
   transition: background 0.2s ease;
+  pointer-events: none;
 }
 
 .task-card.completed .task-text {
@@ -733,6 +819,7 @@ onMounted(() => {
   opacity: 0;
   transition: all 0.2s ease;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .task-card:hover .delete-task-btn {
@@ -759,7 +846,8 @@ onMounted(() => {
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
 }
 
 .btn-add-task:hover {
@@ -801,7 +889,6 @@ onMounted(() => {
   font-size: 1rem;
 }
 
-/* Back button */
 .btn-back {
   display: inline-block;
   margin-top: 2rem;
@@ -819,7 +906,6 @@ onMounted(() => {
   box-shadow: 0 4px 15px rgba(13, 72, 83, 0.3);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .board-header {
     flex-direction: column;

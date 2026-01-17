@@ -1,14 +1,5 @@
 <template>
   <div>
-    <nav> <div class="logo">CHRONIO</div> 
-      <div class="nav-links">
-        <RouterLink to="/calendario" class="active"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-        <RouterLink to="/bacheche"><i class="fas fa-clipboard"></i> Bacheche</RouterLink>
-        <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-        <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
-        
-      </div>
-    </nav>
     
     <div class="container">
       <div class="sidebar-left">
@@ -37,8 +28,14 @@
               </div>
               <div class="tag-color" :style="{ background: tag.color }"></div>
               <span class="tag-name">{{ tag.name }}</span>
-              <button @click="deleteTag(tag.id)" class="delete-tag-btn">
+              <button @click="openShareModal(tag.id)" class="share-tag-btn">
+                <i class="fas fa-share-alt"></i>
+              </button>
+              <button v-if="isTagOwner(tag)" @click="deleteTag(tag.id)" class="delete-tag-btn">
                 <i class="fas fa-trash"></i>
+              </button>
+              <button v-else @click="handleLeaveTag(tag.id)" class="leave-tag-btn">
+                <i class="fas fa-sign-out-alt"></i>
               </button>
             </div>
           </div>
@@ -349,11 +346,23 @@
       </div>
     </div>
   </div>
+
+  <ShareModal 
+    :show="showShareModal" 
+    type="tag" 
+    :itemId="shareItemId"
+    @close="showShareModal = false"
+    @success="handleShareSuccess"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useNotifications } from '../composables/useNotifications'
+import { useCalendar } from '../composables/useCalendar'
+import { currentUser } from '../auth/auth'
 import type { Tag, Event, EventForm, TagForm, ConfirmModal } from '../types/calendar'
+import ShareModal from './ShareModal.vue'
 
 const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
                 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre']
@@ -366,14 +375,29 @@ const displayMonth = ref(currentDate.getMonth())
 const displayYear = ref(currentDate.getFullYear())
 const currentView = ref('month')
 const selectedDay = ref(currentDate.getDate())
+const userId = ref<string | null>(null)
 
-const tags = ref<Tag[]>([])
-const events = ref<{ [key: string]: Event[] }>({})
+const { notifications, forceRefreshNotifications } = useNotifications()
+const {
+  tags,
+  events,
+  createTag,
+  updateTag,
+  deleteTag: deleteTagAPI,
+  toggleTagVisibility,
+  leaveTag,
+  createEvent,
+  updateEvent,
+  deleteEvent: deleteEventAPI,
+  getTagById
+} = useCalendar()
+
 const tagsVisible = ref(true)
-
 const showEventModal = ref(false)
 const showTagModal = ref(false)
 const showConfirmModal = ref(false)
+const showShareModal = ref(false)
+const shareItemId = ref('')
 
 const eventForm = ref<EventForm>({
   title: '',
@@ -390,8 +414,8 @@ const tagForm = ref<TagForm>({
   color: '#0d4853'
 })
 
-const editingEventId = ref<number | null>(null)
-const editingTagId = ref<number | null>(null)
+const editingEventId = ref<string | null>(null)
+const editingTagId = ref<string | null>(null)
 
 const confirmModal = ref<ConfirmModal>({
   title: '',
@@ -399,40 +423,20 @@ const confirmModal = ref<ConfirmModal>({
   callback: null
 })
 
-const tagIdCounter = ref(1)
-const eventIdCounter = ref(1)
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+})
 
-const TAGS_KEY = 'calendar_tags'
-const EVENTS_KEY = 'calendar_events'
 
-const loadData = () => {
-  const savedTags = localStorage.getItem(TAGS_KEY)
-  const savedEvents = localStorage.getItem(EVENTS_KEY)
-  
-  if (savedTags) {
-    const data = JSON.parse(savedTags)
-    tags.value = data.tags
-    tagIdCounter.value = data.nextId
-  }
-  
-  if (savedEvents) {
-    const data = JSON.parse(savedEvents)
-    events.value = data.events
-    eventIdCounter.value = data.nextId
-  }
-}
-
-const saveData = () => {
-  localStorage.setItem(TAGS_KEY, JSON.stringify({
-    tags: tags.value,
-    nextId: tagIdCounter.value
-  }))
-  
-  localStorage.setItem(EVENTS_KEY, JSON.stringify({
-    events: events.value,
-    nextId: eventIdCounter.value
-  }))
-}
 
 const calendarDays = computed(() => {
   const days = []
@@ -452,7 +456,7 @@ const calendarDays = computed(() => {
     const dateKey = `${prevYear}-${prevMonth + 1}-${dayDate}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -473,7 +477,7 @@ const calendarDays = computed(() => {
     const dateKey = `${displayYear.value}-${displayMonth.value + 1}-${i}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -501,7 +505,7 @@ const calendarDays = computed(() => {
     const dateKey = `${nextYear}-${nextMonth + 1}-${i}`
     const dayEvents = events.value[dateKey] || []
     const validEvents = dayEvents.filter(event => {
-      const tag = tags.value.find(t => t.id === event.tag)
+      const tag = getTagById(event.tag)
       return !event.tag || (tag && tag.visible)
     })
     
@@ -541,7 +545,7 @@ const todayEvents = computed(() => {
       
       if ((eventStart <= endOfToday && eventEnd >= startOfToday)) {
         const tag = tags.value.find(t => t.id === event.tag)
-        if (!event.tag || (tag && tag.visible)) {
+        if (!event.tag || !tag || tag.visible) {
           todayEventsList.push({
             ...event,
             displayTitle: getEventDisplayTitle(event, todayDateKey),
@@ -580,7 +584,7 @@ const weekEvents = computed(() => {
         
         if ((eventStart <= endOfTarget && eventEnd >= startOfTarget)) {
           const tag = tags.value.find(t => t.id === event.tag)
-          if (!event.tag || (tag && tag.visible)) {
+          if (!event.tag || !tag || tag.visible) {
             const eventTime = event.allDay ? 'Tutto il giorno' : eventStart.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
             
             const monthIndex = targetDate.getMonth();
@@ -701,12 +705,8 @@ const toggleTagsVisibility = () => {
   tagsVisible.value = !tagsVisible.value
 }
 
-const toggleTag = (tagId: number) => {
-  const tag = tags.value.find(t => t.id === tagId)
-  if (tag) {
-    tag.visible = !tag.visible
-    saveData()
-  }
+const toggleTag = async (tagId: string) => {
+  await toggleTagVisibility(tagId)
 }
 
 const openTagModal = () => {
@@ -719,7 +719,7 @@ const closeTagModal = () => {
   showTagModal.value = false
 }
 
-const editTag = (tagId: number) => {
+const editTag = (tagId: string) => {
   const tag = tags.value.find(t => t.id === tagId)
   if (!tag) return
   
@@ -728,42 +728,28 @@ const editTag = (tagId: number) => {
   showTagModal.value = true
 }
 
-const saveTag = () => {
+const saveTag = async () => {
   if (!tagForm.value.name.trim()) return
   
-  if (editingTagId.value) {
-    const tag = tags.value.find(t => t.id === editingTagId.value)
-    if (tag) {
-      tag.name = tagForm.value.name
-      tag.color = tagForm.value.color
+  try {
+    if (editingTagId.value) {
+      await updateTag(editingTagId.value, tagForm.value)
+    } else {
+      await createTag(tagForm.value)
     }
-  } else {
-    tags.value.push({
-      id: tagIdCounter.value++,
-      name: tagForm.value.name,
-      color: tagForm.value.color,
-      visible: true
-    })
+    closeTagModal()
+  } catch (error) {
+    console.error('Error saving tag:', error)
   }
-  
-  saveData()
-  closeTagModal()
 }
 
-const deleteTag = (tagId: number) => {
-  showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', () => {
-    for (const dateKey in events.value) {
-      const dayEvents = events.value[dateKey];
-      if (!dayEvents) continue;
-      
-      events.value[dateKey] = dayEvents.filter(event => event.tag !== tagId)
-      if (events.value[dateKey].length === 0) {
-        delete events.value[dateKey]
-      }
+const deleteTag = (tagId: string) => {
+  showConfirm('Elimina tag', 'Sei sicuro di voler eliminare questo tag?', async () => {
+    try {
+      await deleteTagAPI(tagId)
+    } catch (error) {
+      console.error('Error deleting tag:', error)
     }
-    
-    tags.value = tags.value.filter(t => t.id !== tagId)
-    saveData()
   })
 }
 
@@ -771,16 +757,58 @@ const selectColor = (color: string) => {
   tagForm.value.color = color
 }
 
-const openEventModal = (day: number, month: number, year: number, hour = 9) => {
+const openEventModal = (day: number, month: number, year: number, hour?: number) => {
   editingEventId.value = null
   selectedDay.value = day
   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  const timeStr = `${String(hour).padStart(2, '0')}:00`
+  
+  let startHour, startMinutes, endHour, endMinutes
+  
+  if (hour !== undefined) {
+    startHour = hour
+    startMinutes = 0
+    endHour = hour + 1
+    endMinutes = 0
+  } else {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const selectedDate = new Date(year, month, day)
+    
+    if (selectedDate.getTime() === today.getTime()) {
+      const currentMinutes = now.getMinutes()
+      const currentHour = now.getHours()
+      
+      if (currentMinutes === 0) {
+        startHour = currentHour
+        startMinutes = 0
+        endHour = currentHour + 1
+        endMinutes = 0
+      } else if (currentMinutes <= 30) {
+        startHour = currentHour
+        startMinutes = 30
+        endHour = currentHour + 1
+        endMinutes = 0
+      } else {
+        startHour = currentHour + 1
+        startMinutes = 0
+        endHour = currentHour + 2
+        endMinutes = 0
+      }
+    } else {
+      startHour = 9
+      startMinutes = 0
+      endHour = 10
+      endMinutes = 0
+    }
+  }
+  
+  const startTime = `${String(startHour).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`
+  const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
   
   eventForm.value = {
     title: '',
-    datetime: `${dateStr}T${timeStr}`,
-    endDatetime: `${dateStr}T${String(hour + 1).padStart(2, '0')}:00`,
+    datetime: `${dateStr}T${startTime}`,
+    endDatetime: `${dateStr}T${endTime}`,
     type: 'evento',
     description: '',
     tag: '',
@@ -792,8 +820,8 @@ const openEventModal = (day: number, month: number, year: number, hour = 9) => {
   setTimeout(() => {
     const startInput = document.querySelector('input[type="datetime-local"]') as HTMLInputElement
     const endInput = document.querySelectorAll('input[type="datetime-local"]')[1] as HTMLInputElement
-    if (startInput) startInput.value = `${dateStr}T${timeStr}`
-    if (endInput) endInput.value = `${dateStr}T${String(hour + 1).padStart(2, '0')}:00`
+    if (startInput) startInput.value = `${dateStr}T${startTime}`
+    if (endInput) endInput.value = `${dateStr}T${endTime}`
   }, 10)
 }
 
@@ -801,7 +829,7 @@ const closeEventModal = () => {
   showEventModal.value = false
 }
 
-const editEvent = (dateKey: string, eventId: number) => {
+const editEvent = (dateKey: string, eventId: string) => {
   const event = events.value[dateKey]?.find(e => e.id === eventId)
   if (!event) return
   
@@ -819,68 +847,34 @@ const editEvent = (dateKey: string, eventId: number) => {
   showEventModal.value = true
 }
 
-const saveEvent = () => {
+const saveEvent = async () => {
   if (!eventForm.value.datetime) return
   
-  const startDate = new Date(eventForm.value.datetime)
-  const endDate = eventForm.value.endDatetime ? new Date(eventForm.value.endDatetime) : startDate
-  
-  const newEvent: Event = {
-    id: editingEventId.value || eventIdCounter.value++,
-    title: eventForm.value.title || 'Evento senza titolo',
-    datetime: eventForm.value.datetime,
-    endDatetime: eventForm.value.endDatetime || undefined,
-    type: eventForm.value.type,
-    description: eventForm.value.description,
-    tag: eventForm.value.tag ? Number(eventForm.value.tag) : undefined,
-    allDay: eventForm.value.allDay
-  }
-  
-  if (editingEventId.value) {
-    for (const dateKey in events.value) {
-      const dayEvents = events.value[dateKey];
-      if (!dayEvents) continue;
-      
-      events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
-      if (events.value[dateKey].length === 0) {
-        delete events.value[dateKey]
-      }
+  try {
+    if (editingEventId.value) {
+      await updateEvent(editingEventId.value, eventForm.value)
+    } else {
+      await createEvent(eventForm.value)
     }
+    closeEventModal()
+  } catch (error) {
+    console.error('Error saving event:', error)
   }
-  
-  const currentDate = new Date(startDate)
-  while (currentDate <= endDate) {
-    const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`
-    
-    if (!events.value[dateKey]) {
-      events.value[dateKey] = []
-    }
-    
-    events.value[dateKey].push(newEvent)
-    currentDate.setDate(currentDate.getDate() + 1)
-  }
-  
-  saveData()
-  closeEventModal()
 }
 
 const deleteEvent = () => {
   if (!editingEventId.value) return
   
-  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
     if (editingEventId.value) {
-      for (const dateKey in events.value) {
-        const dayEvents = events.value[dateKey];
-        if (!dayEvents) continue;
-        
-        events.value[dateKey] = dayEvents.filter(e => e.id !== editingEventId.value)
-        if (events.value[dateKey].length === 0) {
-          delete events.value[dateKey]
-        }
+      try {
+        await deleteEventAPI(editingEventId.value)
+        await forceRefreshNotifications()
+        closeEventModal()
+      } catch (error) {
+        console.error('Error deleting event:', error)
       }
-      saveData()
     }
-    closeEventModal()
   })
 }
 
@@ -901,7 +895,7 @@ const closeConfirmModal = () => {
   confirmModal.value.callback = null
 }
 
-const getEventColor = (tagId?: number): string => {
+const getEventColor = (tagId?: string): string => {
   if (!tagId) return '#0d4853'
   const tag = tags.value.find(t => t.id === tagId)
   return tag?.visible ? tag.color : '#0d4853'
@@ -946,18 +940,14 @@ const getAllDayEvents = (): Event[] => {
   })
 }
 
-const deleteEventFromSidebar = (eventId: number) => {
-  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', () => {
-    for (const key in events.value) {
-      const dayEvents = events.value[key];
-      if (!dayEvents) continue;
-      
-      events.value[key] = dayEvents.filter(e => e.id !== eventId)
-      if (events.value[key].length === 0) {
-        delete events.value[key]
-      }
+const deleteEventFromSidebar = (eventId: string) => {
+  showConfirm('Elimina evento', 'Sei sicuro di voler eliminare questo evento?', async () => {
+    try {
+      await deleteEventAPI(eventId)
+      await forceRefreshNotifications()
+    } catch (error) {
+      console.error('Error deleting event:', error)
     }
-    saveData()
   })
 }
 
@@ -978,6 +968,27 @@ const getWeekAllDayEvents = (dateKey: string): Event[] => {
   return dayEvents.filter(event => event.allDay).filter(event => {
     const tag = tags.value.find(t => t.id === event.tag)
     return !event.tag || (tag?.visible)
+  })
+}
+
+const openShareModal = (tagId: string) => {
+  shareItemId.value = tagId.toString()
+  showShareModal.value = true
+}
+
+const handleShareSuccess = () => {
+  console.log('Tag condiviso con successo')
+}
+
+const isTagOwner = (tag: Tag) => tag.ownerId === userId.value
+
+const handleLeaveTag = (tagId: string) => {
+  showConfirm('Abbandona tag', 'Sei sicuro di voler abbandonare questo tag condiviso?', async () => {
+    try {
+      await leaveTag(tagId)
+    } catch (error) {
+      console.error('Error leaving tag:', error)
+    }
   })
 }
 
@@ -1066,16 +1077,86 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 onMounted(() => {
-  loadData()
+  currentUser().then(user => {
+    userId.value = user?.id || null
+  })
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('click', handleClickOutside)
-  document.body.classList.add('no-scroll')
-  window.scrollTo(0, 0)
+  document.documentElement.style.overflow = 'hidden'
+  document.body.style.overflow = 'hidden'
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('click', handleClickOutside)
-  document.body.classList.remove('no-scroll')
+  document.documentElement.style.overflow = ''
+  document.body.style.overflow = ''
 })
 </script>
+
+<style>
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
+}
+
+.share-tag-btn {
+  background: rgba(52, 152, 219, 0.8);
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.share-tag-btn:hover {
+  background: rgba(52, 152, 219, 1);
+}
+
+.share-tag-btn i {
+  color: white;
+  font-size: 11px;
+}
+
+.leave-tag-btn {
+  background: rgba(243, 156, 18, 0.8);
+  border: none;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.leave-tag-btn:hover {
+  background: rgba(243, 156, 18, 1);
+}
+
+.leave-tag-btn i {
+  color: white;
+  font-size: 11px;
+}
+</style>

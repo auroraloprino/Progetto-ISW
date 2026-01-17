@@ -16,8 +16,10 @@ export interface Column {
 }
 
 export interface Board {
+  id: string;
   slug: string;
   title: string;
+  ownerId: string;
   editing?: boolean;
   columns: Column[];
 }

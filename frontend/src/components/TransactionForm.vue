@@ -20,7 +20,6 @@ const description = ref('');
 const amount = ref<number | null>(null);
 const date = ref<string>('');
 
-// Initialize date to today
 const initializeDate = () => {
   const today = new Date();
   date.value = today.toISOString().split('T')[0]!;
@@ -28,23 +27,19 @@ const initializeDate = () => {
 
 initializeDate();
 
-// Watch visible prop to reset or populate form
 watch(() => props.visible, (newVisible) => {
   if (newVisible) {
     if (props.editingTransaction) {
-      // Modalità modifica: popola il form con i dati esistenti
       description.value = props.editingTransaction.description;
       amount.value = props.editingTransaction.amount;
       const transactionDate = new Date(props.editingTransaction.date);
       date.value = transactionDate.toISOString().split('T')[0]!;
     } else {
-      // Modalità aggiunta: resetta il form
       resetForm();
     }
   }
 });
 
-// Watch editingTransaction changes
 watch(() => props.editingTransaction, (newTransaction) => {
   if (newTransaction && props.visible) {
     description.value = newTransaction.description;

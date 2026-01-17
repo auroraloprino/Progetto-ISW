@@ -60,6 +60,21 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   background: var(--bg-color);
   min-height: 100vh;
+  overflow: hidden;
+}
+
+body.dashboard-page {
+  overflow: hidden; 
+}
+
+body.dashboard-page .account-wrapper {
+  height: auto;
+  overflow: visible;
+}
+
+.account-wrapper {
+  height: auto;
+  overflow: visible;
 }
 
 body.no-scroll {
@@ -459,6 +474,12 @@ nav {
   flex-direction: column;
   gap: 2rem;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-right::-webkit-scrollbar {
+  display: none;
 }
 
 .spacer {
@@ -1269,10 +1290,9 @@ nav {
 }
 .account-wrapper {
   height: calc(100vh - 80px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
+  margin-top: 80px;
+  padding: 2rem;
+  overflow: hidden;
 }
 
 .account-card {
@@ -1373,7 +1393,6 @@ nav {
   transform: translateY(-2px);
 }
 
-/* Theme Controls */
 .theme-controls {
   margin-top: 2rem;
   padding: 1.5rem;
@@ -1919,23 +1938,21 @@ select.view-selector {
   font-size: 0.9rem;
 }
 
-/* Account page layout - Two columns */
 .account-content {
   display: flex;
   gap: 2rem;
   align-items: flex-start;
-  justify-content: space-between;  /* Cambiato da center */
+  justify-content: space-between;
   width: 100%;
-  max-width: none;  /* Rimosso limite */
-  padding: 0 2rem;  /* Padding laterale */
+  max-width: none;
+  min-height: calc(100vh - 160px);
 }
 
 .account-content .account-card {
   flex-shrink: 0;
-  margin-right: 1rem;  /* Piccolo margine dal bordo */
+  margin-right: 1rem;
 }
 
-/* Responsive layout */
 @media (max-width: 1024px) {
   .account-content {
     flex-direction: column;

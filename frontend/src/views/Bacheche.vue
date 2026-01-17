@@ -1,39 +1,4 @@
 <template>
-  <nav>
-    <div class="logo">CHRONIO</div>
-    <div class="nav-links">
-      <RouterLink to="/calendario"><i class="fas fa-calendar-alt"></i> Calendario</RouterLink>
-      
-      <!-- Dropdown Bacheche -->
-      <div class="dropdown" @mouseleave="startCloseTimer" @mouseenter="cancelCloseTimer">
-        <a class="dropdown-toggle active" @click.stop="toggleDropdown">
-          <i class="fas fa-clipboard"></i> Bacheche
-          <i class="fas fa-chevron-down" :class="{ 'rotated': dropdownOpen }"></i>
-        </a>
-        <div class="dropdown-menu" v-show="dropdownOpen" @mouseenter="cancelCloseTimer">
-          <RouterLink 
-            v-for="board in boardsList" 
-            :key="board.slug"
-            :to="`/bacheche/${board.slug}`"
-            class="dropdown-item"
-            @click="closeDropdown"
-          >
-            <i class="fas fa-clipboard"></i>
-            {{ board.title }}
-          </RouterLink>
-          <div class="dropdown-divider" v-if="boardsList.length > 0"></div>
-          <a class="dropdown-item disabled">
-            <i class="fas fa-th"></i>
-            Tutte le bacheche
-          </a>
-        </div>
-      </div>
-      
-      <RouterLink to="/budget"><i class="fas fa-wallet"></i> Budget</RouterLink>
-      <RouterLink to="/account"><i class="fas fa-user-circle"></i> Account</RouterLink>
-      
-    </div>
-  </nav>
 
   <div class="page-content">
     <div class="page-header">
@@ -74,9 +39,10 @@
         class="board-card"
         @click="openBoard(board.slug)"
       >
-        <button 
+        <button
+          v-if="isOwner(board)"
           class="delete-btn"
-          @click.stop="handleDeleteBoard(board.slug)"
+          @click.stop="handleDeleteBoard(board)"
           title="Elimina bacheca"
         >
           <i class="fas fa-times"></i>
@@ -102,22 +68,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, nextTick, reactive, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useBoards } from '../composables/useBoards';
+import { useNotifications } from '../composables/useNotifications';
+import { currentUser } from '../auth/auth';
 import type { Board } from '../types/boards';
 
 const router = useRouter();
 
 const {
   boards,
-  boardsList,
+  loadBoards,
   createBoard,
   deleteBoard,
   updateBoardTitle
 } = useBoards();
 
-const dropdownOpen = ref(false);
+const { notifications } = useNotifications();
+const userId = ref<string | null>(null);
+
+const todayEventsCount = computed(() => {
+  return notifications.value.filter(n => {
+    if (n.read) return false
+    
+    const eventDate = new Date(n.datetime)
+    const now = new Date()
+    const timeDiff = eventDate.getTime() - now.getTime()
+    const minutesDiff = Math.floor(timeDiff / 60000)
+    
+    return minutesDiff <= 30 && minutesDiff >= 0
+  }).length
+});
+
 const boardTitles = reactive<Record<string, string>>({});
 const titleInputs = ref<HTMLInputElement[]>([]);
 const searchQuery = ref('');
@@ -125,7 +108,8 @@ const searchResults = ref<any[]>([]);
 const showSearchResults = ref(false);
 const showSearch = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-let closeTimer: ReturnType<typeof setTimeout> | null = null;
+
+const isOwner = (board: Board) => board.ownerId === userId.value;
 
 const handleClickOutside = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
@@ -134,50 +118,27 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 };
 
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
+onMounted(async () => {
+  const user = await currentUser();
+  userId.value = user?.id || null;
+  document.body.classList.remove('dashboard-page');
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
+onMounted(async () => {
+  const user = await currentUser();
+  userId.value = user?.id || null;
+  await loadBoards();
+  document.addEventListener('click', handleClickOutside);
+});
 
-// Dropdown handlers
-const toggleDropdown = () => {
-  dropdownOpen.value = !dropdownOpen.value;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const startCloseTimer = () => {
-  closeTimer = setTimeout(() => {
-    dropdownOpen.value = false;
-  }, 300);
-};
-
-const cancelCloseTimer = () => {
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-const closeDropdown = () => {
-  dropdownOpen.value = false;
-  if (closeTimer) {
-    clearTimeout(closeTimer);
-    closeTimer = null;
-  }
-};
-
-// Board operations
-const handleCreateBoard = () => {
-  const newBoard = createBoard();
+const handleCreateBoard = async () => {
+  const newBoard = await createBoard();
   newBoard.editing = true;
   boardTitles[newBoard.slug] = newBoard.title;
-  
+
   nextTick(() => {
     const inputs = titleInputs.value;
     if (inputs && inputs.length > 0) {
@@ -199,20 +160,21 @@ const startEditTitle = (board: Board) => {
   });
 };
 
-const saveBoardTitle = (board: Board) => {
-  const title = boardTitles[board.slug] || board.title;
-  const newSlug = updateBoardTitle(board.slug, title);
+const saveBoardTitle = async (board: Board) => {
+  const oldSlug = board.slug;
+  const title = boardTitles[oldSlug] || board.title;
+
+  const { newSlug } = await updateBoardTitle(board.id, title);
   board.editing = false;
-  
-  // If slug changed, update the reactive object
-  if (newSlug && newSlug !== board.slug) {
-    delete boardTitles[board.slug];
+
+  if (newSlug && newSlug !== oldSlug) {
+    delete boardTitles[oldSlug];
     boardTitles[newSlug] = title;
   }
 };
 
-const handleDeleteBoard = (slug: string) => {
-  deleteBoard(slug);
+const handleDeleteBoard = async (board: Board) => {
+  await deleteBoard(board.id);
 };
 
 const openBoard = (slug: string) => {
@@ -271,7 +233,6 @@ const toggleSearch = () => {
 </script>
 
 <style scoped>
-/* Dropdown styles */
 .dropdown {
   position: relative;
   display: inline-block;
@@ -353,7 +314,6 @@ const toggleSearch = () => {
   margin: 0.5rem 0;
 }
 
-/* Boards grid */
 .boards-container {
   display: flex;
   flex-wrap: wrap;
@@ -473,5 +433,104 @@ const toggleSearch = () => {
 .page-content h1 {
   margin-bottom: 1rem !important;
   margin-top: 0 !important;
+}
+
+.account-badge {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.4rem;
+  border-radius: 10px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nav-links a {
+  position: relative;
+}
+
+@media (max-width: 1024px) {
+  .boards-container {
+    justify-content: center;
+  }
+  
+  .board-card {
+    min-width: 250px;
+    flex: 1 1 calc(50% - 10px);
+    max-width: calc(50% - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .boards-container {
+    gap: 15px;
+    margin-top: 20px;
+  }
+  
+  .board-card {
+    min-width: 100%;
+    flex: 1 1 100%;
+    max-width: 100%;
+    height: 100px;
+  }
+  
+  .board-title {
+    font-size: 16px;
+  }
+  
+  .search-container {
+    width: 100%;
+  }
+  
+  .dropdown-menu {
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .board-card {
+    height: 90px;
+    padding: 15px;
+  }
+  
+  .board-title {
+    font-size: 14px;
+  }
+  
+  .add-board {
+    gap: 5px;
+  }
+  
+  .add-board i {
+    font-size: 20px;
+  }
+  
+  .add-board span {
+    font-size: 14px;
+  }
+  
+  .delete-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .search-input {
+    font-size: 14px;
+  }
 }
 </style>
